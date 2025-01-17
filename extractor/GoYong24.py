@@ -7,10 +7,19 @@ from playwright.sync_api import sync_playwright, TimeoutError
 
 class Extractor_Goyong24:
 
-    def __init__(self, location_json, training_json, area="서울 전체", pages="1"):
-        self.area = location_json[area]
-        print(self.area)
-        self.pages = pages
+    def __init__(
+        self,
+        start_date="2025-01-17",
+        end_date="20250117",
+        area="11%7C서울+전체",
+        training_data="kdgtal_tgcr_yn%7CK-디지털트레이닝%2Cnlg_jsfc_yn%7C국가전략산업직종",
+    ):
+        self.start_date = (str(start_date)).replace("-", "")
+        self.start_date_picker = start_date
+        self.end_date = (str(end_date)).replace("-", "")
+        self.end_date_picker = end_date
+        self.area = area
+        self.training_data = training_data
         self.soup = self.edit_goyong_url()
 
     def start_crawling(self):
@@ -20,11 +29,14 @@ class Extractor_Goyong24:
             data_set = self.training_people_crawling(links)
         except:
             self.save_to_file(f"{len(self.data_set)}개 된 고용24", self.data_set)
-        self.save_to_file("고용24", data_set)
+        self.save_to_file("goyong24", data_set)
 
     # area 기본값 서울+전체
-    def edit_goyong_url(self):
-        goyong_url = f"https://www.work24.go.kr/hr/a/a/1100/trnnCrsInf.do?dghtSe=A&traingMthCd=A&tracseTme=16&endDate=20260101&keyword1=&keyword2=&pageSize=10&orderBy=ASC&startDate_datepicker=2024-01-01&currentTab=1&topMenuYn=&pop=&tracseId=AIG20230000412579&pageRow=100&totamtSuptYn=A&keywordTrngNm=&crseTracseSeNum=&keywordType=1&gb=&keyword=&kDgtlYn=&ncs=200103%7C전체%2C200102%7C전체%2C200101%7C전체&area={self.area}&orderKey=2&mberSe=&kdgLinkYn=&srchType=all_type&totTraingTime=A&crseTracseSe=nlg_jsfc_yn%7C국가기간전략산업직종%2Ckdgtal_tgcr_yn%7CK-디지털트레이닝&tranRegister=&mberId=&i2=A&pageId=2&programMenuIdentification=EBG020000000310&endDate_datepicker=2026-01-01&monthGubun=&pageOrder=2ASC&pageIndex={self.pages}&bgrlInstYn=&startDate=20240101&crseTracseSeKDT=&gvrnInstt=&selectNCSKeyword=&action=trnnCrsInfPost.do"
+    def edit_goyong_url(
+        self,
+        pages="1",
+    ):
+        goyong_url = f"https://www.work24.go.kr/hr/a/a/1100/trnnCrsInf.do?dghtSe=A&traingMthCd=A&tracseTme=16&endDate={self.end_date}&keyword1=&keyword2=&pageSize=10&orderBy=ASC&startDate_datepicker={self.start_date_picker}&currentTab=1&topMenuYn=&pop=&tracseId=AIG20230000412579&pageRow=100&totamtSuptYn=A&keywordTrngNm=&crseTracseSeNum=&keywordType=1&gb=&keyword=&kDgtlYn=&ncs=200103%7C전체%2C200102%7C전체%2C200101%7C전체&area={self.area}&orderKey=2&mberSe=&kdgLinkYn=&srchType=all_type&totTraingTime=A&crseTracseSe={self.training_data}&tranRegister=&mberId=&i2=A&pageId=2&programMenuIdentification=EBG020000000310&endDate_datepicker={self.end_date_picker}&monthGubun=&pageOrder=2ASC&pageIndex={pages}&bgrlInstYn=&startDate={self.start_date}&crseTracseSeKDT=&gvrnInstt=&selectNCSKeyword=&action=trnnCrsInfPost.do"
 
         response = requests.get(
             goyong_url,
@@ -88,184 +100,190 @@ class Extractor_Goyong24:
                     raise e  # 최종적으로 예외를 던져서 밖으로 전달
 
     def training_people_crawling(self, links):
-        self.data_set = []
-        count = 1
-        for link in links:
-            url = self.info_url(link, "c")
-            print(f"{count}회차 {url}")
+        try:
+            self.data_set = []
+            count = 1
+            for link in links:
+                url = self.info_url(link, "c")
+                print(f"{count}회차 {url}")
 
-            response = requests.get(
-                url,
-                headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-                },
-            )
-            soup = BeautifulSoup(response.content, "html.parser")
+                response = requests.get(
+                    url,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+                    },
+                )
+                soup = BeautifulSoup(response.content, "html.parser")
 
-            location = (
-                soup.find("ul", class_="infoList")
-                .find("span", class_="con")
-                .text.split("지도보기")[0]
-                .strip()
-            )
-
-            url = self.info_url(link, "b")
-
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                page = browser.new_page()
-
-                try:
-                    self.goto_with_retry(page=page, url=url)
-                except TimeoutError:
-                    print("페이지 로드가 실패했습니다. 다음 로직을 처리합니다...")
-
-                page.click("#infoTab7 button")
-                page.wait_for_load_state("networkidle")
-                print("다른회차 정보보기 클릭")
-
-                content = page.content()
-                soup = BeautifulSoup(content, "html.parser")
-
-                company = (
-                    soup.find("section", id="section1")
-                    .find("div", class_="title")
-                    .find("p")
-                    .text.strip()
+                location = (
+                    soup.find("ul", class_="infoList")
+                    .find("span", class_="con")
+                    .text.split("지도보기")[0]
+                    .strip()
                 )
 
-                title = (
-                    soup.find("section", id="section1")
-                    .find("div", class_="title")
-                    .find("h4")
-                    .text
-                )
-                title = title.split("모집")[0].strip()
+                url = self.info_url(link, "b")
 
-                job_sort = (
-                    soup.find("section", id="section1")
-                    .find("div", class_="box")
-                    .find("ul", class_="list")
-                    .find_all("span", class_="con")
-                )
+                with sync_playwright() as p:
+                    browser = p.chromium.launch(headless=True)
+                    page = browser.new_page()
 
-                occupation = job_sort[1].text.strip()
+                    try:
+                        self.goto_with_retry(page=page, url=url)
+                    except TimeoutError:
+                        print("페이지 로드가 실패했습니다. 다음 로직을 처리합니다...")
 
-                training_type = job_sort[12].text.strip()
+                    page.click("#infoTab7 button")
+                    page.wait_for_load_state("networkidle")
+                    print("다른회차 정보보기 클릭")
 
-                training_time = job_sort[6].text.split("총")[1].split("시간")[0]
+                    content = page.content()
+                    soup = BeautifulSoup(content, "html.parser")
 
-                content = page.content()
-                soup = BeautifulSoup(content, "html.parser")
-
-                trainings = soup.find("div", class_="accordionList").find_all("dl")
-
-                trainings = trainings[::-1]
-
-                each_trainings_data = []
-
-                sum = 0
-
-                if not trainings:
-                    self.data_set.append(
-                        {
-                            "기관명": company,
-                            "주소": location,
-                            "과정명": title,
-                            "회차": "해당 정보 없음",
-                            "직종": occupation,
-                            "훈련유형": training_type,
-                            "개강일": "해당 정보 없음",
-                            "종강일": "해당 정보 없음",
-                            "훈련시간": training_time,
-                            "모집인원": "해당 정보 없음",
-                            "수강신청인원": "해당 정보 없음",
-                            "수강확정인원": "해당 정보 없음",
-                            "평균 인원": "해당 정보 없음",
-                            "전회차 인원": "해당 정보 없음",
-                        }
-                    )
-                    continue
-
-                for training in trainings:
-
-                    recurrence = (
-                        training.find("p", class_="tit").text.split("모집")[0].strip()
+                    company = (
+                        soup.find("section", id="section1")
+                        .find("div", class_="title")
+                        .find("p")
+                        .text.strip()
                     )
 
-                    date = (
-                        training.find("ul", class_="relList")
-                        .find("span", class_="con")
-                        .text.split("~")
+                    title = (
+                        soup.find("section", id="section1")
+                        .find("div", class_="title")
+                        .find("h4")
+                        .text
                     )
-                    start_date = date[0].strip()
-                    end_date = date[1].strip()
+                    title = title.split("모집")[0].strip()
 
-                    number_of_student = (
-                        training.find("table", class_="view")
-                        .find_all("td")[1]
-                        .text.split()
-                    )
-
-                    recruit_student = (
-                        training.find("table", class_="view")
-                        .find_all("td")[0]
-                        .text.split()
-                    )[0]
-
-                    confirmed_student = int(number_of_student[1].split("명")[0])
-                    not_confirmed_student = int(number_of_student[5].split("명")[0])
-
-                    sum += confirmed_student
-
-                    each_trainings_data.append(
-                        {
-                            "recurrence": recurrence,
-                            "start_date": start_date,
-                            "end_date": end_date,
-                            "recruit_student": recruit_student,
-                            "confirmed_student": confirmed_student,
-                            "not_confirmed_student": not_confirmed_student,
-                        }
+                    job_sort = (
+                        soup.find("section", id="section1")
+                        .find("div", class_="box")
+                        .find("ul", class_="list")
+                        .find_all("span", class_="con")
                     )
 
-                average_student = round(sum / len(each_trainings_data), 2)
-                pre_confirmed_student = 0
+                    occupation = job_sort[1].text.strip()
 
-                for data in each_trainings_data:
+                    training_type = job_sort[12].text.strip()
 
-                    if pre_confirmed_student == 0:
-                        pre_confirmed_student = "해당 정보 없음"
+                    training_time = job_sort[6].text.split("총")[1].split("시간")[0]
 
-                    self.data_set.append(
-                        {
-                            "기관명": company,
-                            "주소": location,
-                            "과정명": title,
-                            "회차": data["recurrence"],
-                            "직종": occupation,
-                            "훈련유형": training_type,
-                            "개강일": data["start_date"],
-                            "종강일": data["end_date"],
-                            "훈련시간": training_time,
-                            "모집인원": data["recruit_student"],
-                            "수강신청인원": data["not_confirmed_student"],
-                            "수강확정인원": data["confirmed_student"],
-                            "평균 인원": average_student,
-                            "전회차 인원": pre_confirmed_student,
-                        }
-                    )
+                    content = page.content()
+                    soup = BeautifulSoup(content, "html.parser")
 
-                    pre_confirmed_student = data["confirmed_student"]
+                    trainings = soup.find("div", class_="accordionList").find_all("dl")
 
-                browser.close()
-            print("append 완료")
-            self.wait(5)
-            count += 1
-        return self.data_set
+                    trainings = trainings[::-1]
+
+                    each_trainings_data = []
+
+                    sum = 0
+
+                    if not trainings:
+                        self.data_set.append(
+                            {
+                                "기관명": company,
+                                "주소": location,
+                                "과정명": title,
+                                "회차": "해당 정보 없음",
+                                "직종": occupation,
+                                "훈련유형": training_type,
+                                "개강일": "해당 정보 없음",
+                                "종강일": "해당 정보 없음",
+                                "훈련시간": training_time,
+                                "모집인원": "해당 정보 없음",
+                                "수강신청인원": "해당 정보 없음",
+                                "수강확정인원": "해당 정보 없음",
+                                "평균 인원": "해당 정보 없음",
+                                "전회차 인원": "해당 정보 없음",
+                            }
+                        )
+                        continue
+
+                    for training in trainings:
+
+                        recurrence = (
+                            training.find("p", class_="tit")
+                            .text.split("모집")[0]
+                            .strip()
+                        )
+
+                        date = (
+                            training.find("ul", class_="relList")
+                            .find("span", class_="con")
+                            .text.split("~")
+                        )
+                        start_date = date[0].strip()
+                        end_date = date[1].strip()
+
+                        number_of_student = (
+                            training.find("table", class_="view")
+                            .find_all("td")[1]
+                            .text.split()
+                        )
+
+                        recruit_student = (
+                            training.find("table", class_="view")
+                            .find_all("td")[0]
+                            .text.split()
+                        )[0]
+
+                        confirmed_student = int(number_of_student[1].split("명")[0])
+                        not_confirmed_student = int(number_of_student[5].split("명")[0])
+
+                        sum += confirmed_student
+
+                        each_trainings_data.append(
+                            {
+                                "recurrence": recurrence,
+                                "start_date": start_date,
+                                "end_date": end_date,
+                                "recruit_student": recruit_student,
+                                "confirmed_student": confirmed_student,
+                                "not_confirmed_student": not_confirmed_student,
+                            }
+                        )
+
+                    average_student = round(sum / len(each_trainings_data), 2)
+                    pre_confirmed_student = 0
+
+                    for data in each_trainings_data:
+
+                        if pre_confirmed_student == 0:
+                            pre_confirmed_student = "해당 정보 없음"
+
+                        self.data_set.append(
+                            {
+                                "기관명": company,
+                                "주소": location,
+                                "과정명": title,
+                                "회차": data["recurrence"],
+                                "직종": occupation,
+                                "훈련유형": training_type,
+                                "개강일": data["start_date"],
+                                "종강일": data["end_date"],
+                                "훈련시간": training_time,
+                                "모집인원": data["recruit_student"],
+                                "수강신청인원": data["not_confirmed_student"],
+                                "수강확정인원": data["confirmed_student"],
+                                "평균 인원": average_student,
+                                "전회차 인원": pre_confirmed_student,
+                            }
+                        )
+
+                        pre_confirmed_student = data["confirmed_student"]
+
+                    browser.close()
+                print("append 완료")
+                self.wait(5)
+                count += 1
+            return self.data_set
+        except Exception as e:
+            print(f"Error during crawling: {e}")
+            return []
 
     def save_to_file(self, file_name, data_set):
-        file = open(f"{file_name}.csv", "w", encoding="utf-8", newline="")
+        file = open(f"./files/{file_name}.csv", "w", encoding="utf-8", newline="")
         writer = csv.writer(file)
         writer.writerow(
             [
