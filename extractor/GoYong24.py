@@ -1,26 +1,31 @@
 import time
 import csv
+import json
 import requests
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError
 
 
 class Extractor_Goyong24:
 
-    def __init__(self):
+    def __init__(self, location_json, training_json, area="서울 전체", pages="1"):
+        self.area = location_json[area]
+        print(self.area)
+        self.pages = pages
         self.soup = self.edit_goyong_url()
 
     def start_crawling(self):
         links = self.link_url_crawling(self.soup)
         print(f"links 개수: {len(links)}")
-        data_set = self.training_people_crawling(links)
+        try:
+            data_set = self.training_people_crawling(links)
+        except:
+            self.save_to_file(f"{len(self.data_set)}개 된 고용24", self.data_set)
         self.save_to_file("고용24", data_set)
 
     # area 기본값 서울+전체
-    def edit_goyong_url(
-        self, area="11%7C%EC%84%9C%EC%9A%B8+%EC%A0%84%EC%B2%B4", pages="1"
-    ):
-        goyong_url = f"https://www.work24.go.kr/hr/a/a/1100/trnnCrsInf.do?dghtSe=A&traingMthCd=A&tracseTme=16&endDate=20260101&keyword1=&keyword2=&pageSize=10&orderBy=ASC&startDate_datepicker=2024-01-01&currentTab=1&topMenuYn=&pop=&tracseId=AIG20230000412579&pageRow=100&totamtSuptYn=A&keywordTrngNm=&crseTracseSeNum=&keywordType=1&gb=&keyword=&kDgtlYn=&ncs=200103%7C%EC%A0%84%EC%B2%B4%2C200102%7C%EC%A0%84%EC%B2%B4%2C200101%7C%EC%A0%84%EC%B2%B4&area={area}&orderKey=2&mberSe=&kdgLinkYn=&srchType=all_type&totTraingTime=A&crseTracseSe=nlg_jsfc_yn%7C%EA%B5%AD%EA%B0%80%EA%B8%B0%EA%B0%84%EC%A0%84%EB%9E%B5%EC%82%B0%EC%97%85%EC%A7%81%EC%A2%85%2Ckdgtal_tgcr_yn%7CK-%EB%94%94%EC%A7%80%ED%84%B8%ED%8A%B8%EB%A0%88%EC%9D%B4%EB%8B%9D&tranRegister=&mberId=&i2=A&pageId=2&programMenuIdentification=EBG020000000310&endDate_datepicker=2026-01-01&monthGubun=&pageOrder=2ASC&pageIndex={pages}&bgrlInstYn=&startDate=20240101&crseTracseSeKDT=&gvrnInstt=&selectNCSKeyword=&action=trnnCrsInfPost.do"
+    def edit_goyong_url(self):
+        goyong_url = f"https://www.work24.go.kr/hr/a/a/1100/trnnCrsInf.do?dghtSe=A&traingMthCd=A&tracseTme=16&endDate=20260101&keyword1=&keyword2=&pageSize=10&orderBy=ASC&startDate_datepicker=2024-01-01&currentTab=1&topMenuYn=&pop=&tracseId=AIG20230000412579&pageRow=100&totamtSuptYn=A&keywordTrngNm=&crseTracseSeNum=&keywordType=1&gb=&keyword=&kDgtlYn=&ncs=200103%7C전체%2C200102%7C전체%2C200101%7C전체&area={self.area}&orderKey=2&mberSe=&kdgLinkYn=&srchType=all_type&totTraingTime=A&crseTracseSe=nlg_jsfc_yn%7C국가기간전략산업직종%2Ckdgtal_tgcr_yn%7CK-디지털트레이닝&tranRegister=&mberId=&i2=A&pageId=2&programMenuIdentification=EBG020000000310&endDate_datepicker=2026-01-01&monthGubun=&pageOrder=2ASC&pageIndex={self.pages}&bgrlInstYn=&startDate=20240101&crseTracseSeKDT=&gvrnInstt=&selectNCSKeyword=&action=trnnCrsInfPost.do"
 
         response = requests.get(
             goyong_url,
@@ -58,24 +63,71 @@ class Extractor_Goyong24:
     def wait(self, seconds=4):
         time.sleep(seconds)
 
+    def info_url(self, link, alphabet):
+        url = f"https://hrd.work24.go.kr/hrdp/co/pco{alphabet}o/PCO{alphabet.upper()}O0100P.do?"
+        param = link.split("'")
+        url += f"tracseId={param[1]}&tracseTme={param[3]}&crseTracseSe={param[5]}&trainstCstmrId={param[7]}&tracseReqstsCd=undefined&cstmConsTme=undefined#undefined"
+        return url
+
+    def goto_with_retry(
+        self, page, url, max_retries=3, wait_until="networkidle", timeout=30_000
+    ):
+        """page.goto()에 대해 최대 max_retries번 재시도."""
+        for attempt in range(1, max_retries + 1):
+            try:
+                page.goto(url, wait_until=wait_until, timeout=timeout)
+                print(f"[SUCCESS] URL 로드 성공")
+                return  # 성공 시 함수를 빠져나감
+            except TimeoutError as e:
+                print(f"[ERROR] {url} 로드 타임아웃 (시도 {attempt}/{max_retries})")
+                if attempt < max_retries:
+                    print("잠시 대기 후 재시도합니다...")
+                    self.wait(2)  # 2초 정도 대기 후 재시도
+                else:
+                    print("최대 재시도 횟수를 초과했습니다.")
+                    # 여기서 raise 하거나 return 하거나, 원하는 처리를 수행
+                    raise e  # 최종적으로 예외를 던져서 밖으로 전달
+
     def training_people_crawling(self, links):
-        data_set = []
+        self.data_set = []
         count = 1
         for link in links:
-            print(f"{count}회차 {link}")
-            url = "https://hrd.work24.go.kr/hrdp/co/pcobo/PCOBO0100P.do?"
-            param = link.split("'")
-            url += f"tracseId={param[1]}&tracseTme={param[3]}&crseTracseSe={param[5]}&trainstCstmrId={param[7]}&tracseReqstsCd=undefined&cstmConsTme=undefined#undefined"
+            url = self.info_url(link, "c")
+            print(f"{count}회차 {url}")
+
+            response = requests.get(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+                },
+            )
+            soup = BeautifulSoup(response.content, "html.parser")
+
+            location = (
+                soup.find("ul", class_="infoList")
+                .find("span", class_="con")
+                .text.split("지도보기")[0]
+                .strip()
+            )
+
+            url = self.info_url(link, "b")
 
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=False)
+                browser = p.chromium.launch(headless=True)
                 page = browser.new_page()
 
-                page.goto(url, timeout=60000)
-                print("url 가기")
+                try:
+                    self.goto_with_retry(page=page, url=url)
+                except TimeoutError:
+                    print("페이지 로드가 실패했습니다. 다음 로직을 처리합니다...")
+
+                page.click("#infoTab7 button")
+                page.wait_for_load_state("networkidle")
+                print("다른회차 정보보기 클릭")
 
                 content = page.content()
                 soup = BeautifulSoup(content, "html.parser")
+
                 company = (
                     soup.find("section", id="section1")
                     .find("div", class_="title")
@@ -104,28 +156,6 @@ class Extractor_Goyong24:
 
                 training_time = job_sort[6].text.split("총")[1].split("시간")[0]
 
-                page.click("ul.tabList li:not(li.on)")
-                page.wait_for_load_state("networkidle")
-                print("훈련기관 정보 클릭")
-
-                content = page.content()
-                soup = BeautifulSoup(content, "html.parser")
-
-                location = (
-                    soup.find("ul", class_="infoList")
-                    .find("span", class_="con")
-                    .text.split("지도보기")[0]
-                    .strip()
-                )
-
-                page.click("ul.tabList li:not(li.on)")
-                page.wait_for_load_state("networkidle")
-                print("훈련과정 정보 클릭")
-
-                page.click("#infoTab7 button")
-                page.wait_for_load_state("networkidle")
-                print("다른회차 정보보기 클릭")
-
                 content = page.content()
                 soup = BeautifulSoup(content, "html.parser")
 
@@ -136,6 +166,27 @@ class Extractor_Goyong24:
                 each_trainings_data = []
 
                 sum = 0
+
+                if not trainings:
+                    self.data_set.append(
+                        {
+                            "기관명": company,
+                            "주소": location,
+                            "과정명": title,
+                            "회차": "해당 정보 없음",
+                            "직종": occupation,
+                            "훈련유형": training_type,
+                            "개강일": "해당 정보 없음",
+                            "종강일": "해당 정보 없음",
+                            "훈련시간": training_time,
+                            "모집인원": "해당 정보 없음",
+                            "수강신청인원": "해당 정보 없음",
+                            "수강확정인원": "해당 정보 없음",
+                            "평균 인원": "해당 정보 없음",
+                            "전회차 인원": "해당 정보 없음",
+                        }
+                    )
+                    continue
 
                 for training in trainings:
 
@@ -157,6 +208,12 @@ class Extractor_Goyong24:
                         .text.split()
                     )
 
+                    recruit_student = (
+                        training.find("table", class_="view")
+                        .find_all("td")[0]
+                        .text.split()
+                    )[0]
+
                     confirmed_student = int(number_of_student[1].split("명")[0])
                     not_confirmed_student = int(number_of_student[5].split("명")[0])
 
@@ -167,6 +224,7 @@ class Extractor_Goyong24:
                             "recurrence": recurrence,
                             "start_date": start_date,
                             "end_date": end_date,
+                            "recruit_student": recruit_student,
                             "confirmed_student": confirmed_student,
                             "not_confirmed_student": not_confirmed_student,
                         }
@@ -180,10 +238,10 @@ class Extractor_Goyong24:
                     if pre_confirmed_student == 0:
                         pre_confirmed_student = "해당 정보 없음"
 
-                    data_set.append(
+                    self.data_set.append(
                         {
                             "기관명": company,
-                            "지역구": location,
+                            "주소": location,
                             "과정명": title,
                             "회차": data["recurrence"],
                             "직종": occupation,
@@ -191,6 +249,7 @@ class Extractor_Goyong24:
                             "개강일": data["start_date"],
                             "종강일": data["end_date"],
                             "훈련시간": training_time,
+                            "모집인원": data["recruit_student"],
                             "수강신청인원": data["not_confirmed_student"],
                             "수강확정인원": data["confirmed_student"],
                             "평균 인원": average_student,
@@ -201,9 +260,10 @@ class Extractor_Goyong24:
                     pre_confirmed_student = data["confirmed_student"]
 
                 browser.close()
+            print("append 완료")
             self.wait(5)
             count += 1
-        return data_set
+        return self.data_set
 
     def save_to_file(self, file_name, data_set):
         file = open(f"{file_name}.csv", "w", encoding="utf-8", newline="")
@@ -211,7 +271,7 @@ class Extractor_Goyong24:
         writer.writerow(
             [
                 "기관명",
-                "지역구",
+                "주소",
                 "과정명",
                 "회차",
                 "직종",
@@ -219,6 +279,7 @@ class Extractor_Goyong24:
                 "개강일",
                 "종강일",
                 "훈련시간",
+                "모집인원",
                 "수강신청인원",
                 "수강확정인원",
                 "평균 인원",
@@ -230,3 +291,6 @@ class Extractor_Goyong24:
             writer.writerow(data.values())
 
         file.close()
+
+    def test_url(self, urls):
+        self.training_people_crawling(urls)
