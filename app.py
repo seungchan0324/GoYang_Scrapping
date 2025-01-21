@@ -43,6 +43,8 @@ if "end_date" not in st.session_state:
     st.session_state.end_date = date.today() + timedelta(days=365)
 if "param" not in st.session_state:
     st.session_state.param = {}
+if "keyword" not in st.session_state:
+    st.session_state.keyword = None
 
 # 클래스 초기화
 main = Main()
@@ -64,16 +66,16 @@ def search_state():
     st.session_state.search_started = not st.session_state.search_started
 
 
-def start_crawling(start_date, end_date, location_data, training_data):
+def start_crawling(start_date, end_date, location_data, training_data, keyword):
     start_date_picker = (str(start_date)).replace("-", "")
     end_date_picker = (str(end_date)).replace("-", "")
     file_name = file_name_selector.select(
-        location_data, training_data, start_date_picker, end_date_picker
+        location_data, training_data, start_date_picker, end_date_picker, keyword
     )
     st.session_state.file_name = file_name
     file_name_display.info(f"{file_name}.csv")
     main.start_crawling(
-        start_date, end_date, location_data, training_data, update_status
+        start_date, end_date, location_data, training_data, keyword, update_status
     )
     search_state()
     st.experimental_rerun()
@@ -106,6 +108,7 @@ def button_toggle(str):
 
 file_name_display = st.empty()
 log_display = st.empty()
+keyword_container = st.container()
 location_container = st.container()
 location_checkbox_container = st.container()
 date_container = st.container()
@@ -115,6 +118,9 @@ search_container = st.container()
 
 if not st.session_state.search_started:
 
+    with keyword_container:
+        st.session_state.keyword = st.text_input("검색어를 입력하시오.")
+
     with location_container:
 
         st.button("지역선택", on_click=button_toggle, args=("location",))
@@ -123,7 +129,7 @@ if not st.session_state.search_started:
 
         with location_checkbox_container:
 
-            columns_per_row = 4
+            columns_per_row = 5
             columns = st.columns(columns_per_row)
 
             for idx, location in enumerate(location_json):
@@ -245,11 +251,12 @@ else:
     training_container.empty()
     training_checkbox_container.empty()
 
+    keyword = st.session_state.keyword
     start_date = st.session_state.param["start_date"]
     end_date = st.session_state.param["end_date"]
     location_data = st.session_state.param["location_data"]
     training_data = st.session_state.param["training_data"]
-    start_crawling(start_date, end_date, location_data, training_data)
+    start_crawling(start_date, end_date, location_data, training_data, keyword)
 
 
 with st.sidebar:

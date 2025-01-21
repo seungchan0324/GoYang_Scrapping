@@ -3,7 +3,9 @@ class File_Name_Selector:
     def __init__(self):
         pass
 
-    def select(self, area, training_data, start_date_picker, end_date_picker):
+    def select(self, area, training_data, start_date_picker, end_date_picker, keyword):
+        if " " in keyword:
+            keyword = keyword.replace(" ", "-")
         if "%C2" in area:
             area_name = ",".join(area.split("서울+")[1] for area in area.split("%C2"))
         elif "전체" in area:
@@ -29,4 +31,4 @@ class File_Name_Selector:
         if "+" in training_name:
             training_name = training_name.replace("+", "_")
 
-        return f"{area_name}_{training_name}_{start_date_picker}_to_{end_date_picker}"
+        return f"{keyword}_{area_name}_{training_name}_{start_date_picker}_to_{end_date_picker}"

@@ -17,6 +17,7 @@ class Extractor_Goyong24:
         end_date="2025-03-17",
         area="11%7C서울+전체",
         training_data="kdgtal_tgcr_yn%7CK-디지털트레이닝%2Cnlg_jsfc_yn%7C국가전략산업직종",
+        keyword="",
     ):
         self.start_date = (str(start_date)).replace("-", "")
         self.start_date_picker = start_date
@@ -24,6 +25,7 @@ class Extractor_Goyong24:
         self.end_date_picker = end_date
         self.area = area
         self.training_data = training_data
+        self.keyword = keyword
         self.soup = self.edit_goyong_url()
 
     def start_crawling(self, update_status):
@@ -35,7 +37,11 @@ class Extractor_Goyong24:
 
         # 파일명
         file_name = self.file_name_selector.select(
-            self.area, self.training_data, self.start_date_picker, self.end_date_picker
+            self.area,
+            self.training_data,
+            self.start_date_picker,
+            self.end_date_picker,
+            self.keyword,
         )
         self.save_to_file(file_name, data_set)
 
@@ -44,7 +50,7 @@ class Extractor_Goyong24:
         self,
         pages="1",
     ):
-        goyong_url = f"https://www.work24.go.kr/hr/a/a/1100/trnnCrsInf.do?dghtSe=A&traingMthCd=A&tracseTme=16&endDate={self.end_date}&keyword1=&keyword2=&pageSize=10&orderBy=ASC&startDate_datepicker={self.start_date_picker}&currentTab=1&topMenuYn=&pop=&tracseId=AIG20230000412579&pageRow=100&totamtSuptYn=A&keywordTrngNm=&crseTracseSeNum=&keywordType=1&gb=&keyword=&kDgtlYn=&ncs=200103%7C전체%2C200102%7C전체%2C200101%7C전체&area={self.area}&orderKey=2&mberSe=&kdgLinkYn=&srchType=all_type&totTraingTime=A&crseTracseSe={self.training_data}&tranRegister=&mberId=&i2=A&pageId=2&programMenuIdentification=EBG020000000310&endDate_datepicker={self.end_date_picker}&monthGubun=&pageOrder=2ASC&pageIndex={pages}&bgrlInstYn=&startDate={self.start_date}&crseTracseSeKDT=&gvrnInstt=&selectNCSKeyword=&action=trnnCrsInfPost.do"
+        goyong_url = f"https://www.work24.go.kr/hr/a/a/1100/trnnCrsInf.do?dghtSe=A&traingMthCd=A&tracseTme=16&endDate={self.end_date}&keyword1=&keyword2=&pageSize=10&orderBy=ASC&startDate_datepicker={self.start_date_picker}&currentTab=1&topMenuYn=&pop=&tracseId=AIG20230000412579&pageRow=100&totamtSuptYn=A&keywordTrngNm=&crseTracseSeNum=&keywordType=1&gb=&keyword={self.keyword}&kDgtlYn=&ncs=200103%7C전체%2C200102%7C전체%2C200101%7C전체&area={self.area}&orderKey=2&mberSe=&kdgLinkYn=&srchType=all_type&totTraingTime=A&crseTracseSe={self.training_data}&tranRegister=&mberId=&i2=A&pageId=2&programMenuIdentification=EBG020000000310&endDate_datepicker={self.end_date_picker}&monthGubun=&pageOrder=2ASC&pageIndex={pages}&bgrlInstYn=&startDate={self.start_date}&crseTracseSeKDT=&gvrnInstt=&selectNCSKeyword=&action=trnnCrsInfPost.do"
 
         response = requests.get(
             goyong_url,
@@ -268,7 +274,9 @@ class Extractor_Goyong24:
                         score = satisfaction.split("점")[1].replace("기준", "").strip()
                         people = satisfaction.split("점")[2].strip()
                         satisfaction = score
-                        satisfaction_people = people
+                        satisfaction_people = (
+                            people.split("명")[0].replace("(", "").strip()
+                        )
 
                     if (
                         text_splitter(4) == "훈련진행중"
