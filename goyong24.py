@@ -4,7 +4,7 @@ import csv
 import requests
 import random
 from bs4 import BeautifulSoup
-from util.file_name import File_Name_Selector
+from file_name import File_Name_Selector
 
 
 class Extractor_Goyong24:

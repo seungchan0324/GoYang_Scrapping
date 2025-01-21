@@ -1,4 +1,4 @@
-from core.goyong24 import Extractor_Goyong24
+from goyong24 import Extractor_Goyong24
 import time
 
 

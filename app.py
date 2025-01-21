@@ -4,8 +4,8 @@ import asyncio
 import sys
 import os
 import streamlit as st
-from core.main import Main
-from util.file_name import File_Name_Selector
+from main import Main
+from file_name import File_Name_Selector
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
