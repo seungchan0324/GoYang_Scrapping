@@ -10,6 +10,8 @@ from util.file_name import File_Name_Selector
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
+# 프로젝트 루트 경로를 추가
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 st.set_page_config(
     page_title="HRD 훈련과정 검색",
