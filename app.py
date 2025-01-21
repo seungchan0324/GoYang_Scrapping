@@ -1,12 +1,15 @@
 import json
-import streamlit as st
 from datetime import date, timedelta
-from main import Main
 import asyncio
 import sys
+import os
+import streamlit as st
+from core.main import Main
+from util.file_name import File_Name_Selector
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 
 st.set_page_config(
     page_title="HRD 훈련과정 검색",
@@ -19,164 +22,242 @@ st.markdown(
 """
 )
 
+# 세션 상태 초기화
 if "location_checked" not in st.session_state:
     st.session_state["location_checked"] = []
-
 if "train_checked" not in st.session_state:
     st.session_state["train_checked"] = []
-
 if "location" not in st.session_state:
     st.session_state["location"] = False
-
 if "training" not in st.session_state:
     st.session_state["training"] = False
+if "search_started" not in st.session_state:
+    st.session_state.search_started = False
+if "log" not in st.session_state:
+    st.session_state.log = None
+if "file_name" not in st.session_state:
+    st.session_state.file_name = None
+if "start_date" not in st.session_state:
+    st.session_state.start_date = date.today()
+if "end_date" not in st.session_state:
+    st.session_state.end_date = date.today() + timedelta(days=365)
+if "param" not in st.session_state:
+    st.session_state.param = {}
 
+# 클래스 초기화
+main = Main()
+file_name_selector = File_Name_Selector()
 
-with open("location_type.json", "r", encoding="UTF-8") as f:
+with open("./json/location_type.json", "r", encoding="UTF-8") as f:
     location_json = json.load(f)
 
-with open("training_type.json", "r", encoding="UTF-8") as f:
+with open("./json/training_type.json", "r", encoding="UTF-8") as f:
     training_json = json.load(f)
 
 
-def start_crawling():
-    main = Main()
-    location_data = "%C2".join(st.session_state["location_checked"])
-    training_data = "%C2".join(st.session_state["train_checked"])
-    main.start_crawling(start_date, end_date, location_data, training_data)
+def update_status(message):
+    st.session_state.log = message
+    log_display.info(message)
 
 
-def location_toggle_checkbox(loc_name, loc_code):
+def search_state():
+    st.session_state.search_started = not st.session_state.search_started
 
-    if loc_name == "서울 전체":
-        if loc_code in st.session_state["location_checked"]:
-            st.session_state["location_checked"] = []
+
+def start_crawling(start_date, end_date, location_data, training_data):
+    start_date_picker = (str(start_date)).replace("-", "")
+    end_date_picker = (str(end_date)).replace("-", "")
+    file_name = file_name_selector.select(
+        location_data, training_data, start_date_picker, end_date_picker
+    )
+    st.session_state.file_name = file_name
+    file_name_display.info(f"{file_name}.csv")
+    main.start_crawling(
+        start_date, end_date, location_data, training_data, update_status
+    )
+    search_state()
+    st.experimental_rerun()
+
+
+def toggle_checkbox(state_key, key_name, key_code):
+    if "전체" in key_name:
+        if key_code in st.session_state[state_key]:
+            st.session_state[state_key] = []
         else:
-            st.session_state["location_checked"] = [loc_code]
+            st.session_state[state_key] = [key_code]
     else:
-        if "11%7C서울+전체" in st.session_state["location_checked"]:
-            st.session_state["location_checked"].remove("11%7C서울+전체")
-        if loc_code in st.session_state["location_checked"]:
-            st.session_state["location_checked"].remove(loc_code)
+        if "A%7C전체" in st.session_state[state_key]:
+            st.session_state[state_key].remove("A%7C전체")
+        elif "11%7C서울+전체" in st.session_state["location_checked"]:
+            st.session_state[state_key].remove("11%7C서울+전체")
+        if key_code in st.session_state[state_key]:
+            st.session_state[state_key].remove(key_code)
         else:
-            st.session_state["location_checked"].append(loc_code)
-
-
-def train_toggle_checkbox(train_type, train_code):
-
-    if train_type == "전체":
-        if train_code in st.session_state["train_checked"]:
-            st.session_state["train_checked"] = []
-        else:
-            st.session_state["train_checked"] = [train_code]
-    else:
-        if "A%7C전체" in st.session_state["train_checked"]:
-            st.session_state["train_checked"].remove("A%7C전체")
-        if train_code in st.session_state["train_checked"]:
-            st.session_state["train_checked"].remove(train_code)
-        else:
-            st.session_state["train_checked"].append(train_code)
-
-
-def button_toggle(types):
-    st.session_state[types] = not st.session_state[types]
+            st.session_state[state_key].append(key_code)
 
 
 def location_reset(types):
     st.session_state[types] = []
 
 
-st.button("지역선택", on_click=button_toggle, args=("location",))
+def button_toggle(str):
+    st.session_state[str] = not st.session_state[str]
 
-if st.session_state["location"]:
 
-    columns_per_row = 4
-    columns = st.columns(columns_per_row)
+file_name_display = st.empty()
+log_display = st.empty()
+location_container = st.container()
+location_checkbox_container = st.container()
+date_container = st.container()
+training_container = st.container()
+training_checkbox_container = st.container()
+search_container = st.container()
 
-    for idx, location in enumerate(location_json):
-        loc_name = location["location"]
-        loc_code = location["location_code"]
+if not st.session_state.search_started:
 
-        checked = loc_code in st.session_state["location_checked"]
+    with location_container:
 
-        is_max_location_checked = len(st.session_state["location_checked"]) == 5
-        not_seoul = loc_name != "서울 전체"
+        st.button("지역선택", on_click=button_toggle, args=("location",))
 
-        if "11%7C서울+전체" not in st.session_state["location_checked"]:
-            disabled = len(st.session_state["location_checked"]) == 5 and (
-                not checked and not_seoul
+    if st.session_state["location"]:
+
+        with location_checkbox_container:
+
+            columns_per_row = 4
+            columns = st.columns(columns_per_row)
+
+            for idx, location in enumerate(location_json):
+                loc_name = location["location"]
+                loc_code = location["location_code"]
+
+                checked = loc_code in st.session_state["location_checked"]
+
+                is_max_location_checked = len(st.session_state["location_checked"]) == 5
+                not_seoul = loc_name != "서울 전체"
+
+                if "11%7C서울+전체" not in st.session_state["location_checked"]:
+                    disabled = len(st.session_state["location_checked"]) == 5 and (
+                        not checked and not_seoul
+                    )
+                else:
+                    disabled = False
+
+                with columns[idx % columns_per_row]:
+                    st.checkbox(
+                        loc_name,
+                        checked,
+                        key=loc_code,
+                        on_change=toggle_checkbox,
+                        disabled=disabled,
+                        args=("location_checked", loc_name, loc_code),
+                    )
+
+            if len(st.session_state["location_checked"]) == 5:
+                col1, col2 = st.columns([6, 1])
+                with col1:
+                    st.write("6개 이상 선택은 안 됩니다.")
+                with col2:
+                    st.button(
+                        "Reset", on_click=location_reset, args=("location_checked",)
+                    )
+
+            st.write("\n")
+
+    with date_container:
+        start_input, end_input = st.columns(2)
+        with start_input:
+            st.session_state.start_date = st.date_input(
+                "시작날짜", value=st.session_state.start_date
             )
-        else:
-            disabled = False
-
-        with columns[idx % columns_per_row]:
-            st.checkbox(
-                loc_name,
-                checked,
-                key=loc_code,
-                on_change=location_toggle_checkbox,
-                disabled=disabled,
-                args=(loc_name, loc_code),
+        with end_input:
+            st.session_state.end_date = st.date_input(
+                "끝 날짜", value=st.session_state.end_date
             )
 
-    if len(st.session_state["location_checked"]) == 5:
-        col1, col2 = st.columns([6, 1])
+        st.session_state.param["start_date"] = (
+            str(st.session_state.start_date)
+        ).replace("-", "")
+        st.session_state.param["end_date"] = (str(st.session_state.end_date)).replace(
+            "-", ""
+        )
+
+        st.write("\n")
+
+    with training_container:
+
+        st.button("훈련유형 선택", on_click=button_toggle, args=("training",))
+
+    with training_checkbox_container:
+
+        if st.session_state["training"]:
+
+            columns_per_row = 3
+            columns = st.columns(columns_per_row)
+
+            for idx, train in enumerate(training_json):
+                train_type = train["training_type"]
+                train_code = train["training_code"]
+
+                checked = train_code in st.session_state["train_checked"]
+
+                with columns[idx % columns_per_row]:
+                    st.checkbox(
+                        train_type,
+                        checked,
+                        key=train_code,
+                        on_change=toggle_checkbox,
+                        args=("train_checked", train_type, train_code),
+                    )
+
+            if len(st.session_state["train_checked"]) > 1:
+                col1, col2 = st.columns([6, 1])
+                with col1:
+                    st.write("많은 선택은 과부화를 부릅니다.")
+                with col2:
+                    st.button("Reset", on_click=location_reset, args=("train_checked",))
+
+            st.write("\n")
+
+    with search_container:
+
+        search = True
+        search = (
+            len(st.session_state["train_checked"]) == 0
+            or len(st.session_state["location_checked"]) == 0
+        )
+        st.session_state.param["location_data"] = "%C2".join(
+            st.session_state["location_checked"]
+        )
+        st.session_state.param["training_data"] = "%C2".join(
+            st.session_state["train_checked"]
+        )
+        col1, col2 = st.columns([5, 1])
         with col1:
-            st.write("6개 이상 선택은 안 됩니다.")
+            log_display = st.empty()
         with col2:
-            st.button("Reset", on_click=location_reset, args=("location_checked",))
-# ef3psqc11
+            st.button("검색 시작", disabled=search, on_click=search_state)
 
-st.write("\n")
+else:
+    date_container.empty()
+    search_container.empty()
+    location_container.empty()
+    location_checkbox_container.empty()
+    training_container.empty()
+    training_checkbox_container.empty()
 
-one_years_ago = date.today() + timedelta(days=365)
+    start_date = st.session_state.param["start_date"]
+    end_date = st.session_state.param["end_date"]
+    location_data = st.session_state.param["location_data"]
+    training_data = st.session_state.param["training_data"]
+    start_crawling(start_date, end_date, location_data, training_data)
 
-col1, col2 = st.columns(2)
-with col1:
-    start_date = st.date_input("시작날짜")
-with col2:
-    end_date = st.date_input("끝 날짜", one_years_ago)
 
-st.write("\n")
-
-st.button("훈련유형 선택", on_click=button_toggle, args=("training",))
-
-if st.session_state["training"]:
-
-    columns_per_row = 3
-    columns = st.columns(columns_per_row)
-
-    for idx, train in enumerate(training_json):
-        train_type = train["training_type"]
-        train_code = train["training_code"]
-
-        checked = train_code in st.session_state["train_checked"]
-
-        with columns[idx % columns_per_row]:
-            st.checkbox(
-                train_type,
-                checked,
-                key=train_code,
-                on_change=train_toggle_checkbox,
-                args=(train_type, train_code),
-            )
-
-    if len(st.session_state["train_checked"]) > 1:
-        col1, col2 = st.columns([6, 1])
-        with col1:
-            st.write("많은 선택은 과부하를 부릅니다.")
-        with col2:
-            st.button("Reset", on_click=location_reset, args=("train_checked",))
-
-st.write("\n")
-
-search = True
-search = (
-    len(st.session_state["train_checked"]) == 0
-    or len(st.session_state["location_checked"]) == 0
-)
-col1, col2 = st.columns([5, 1])
-with col1:
-    st.write("")
-with col2:
-    st.button("검색 시작", disabled=search, on_click=start_crawling)
+with st.sidebar:
+    files_path = "./files"
+    file_list = os.listdir(files_path)
+    st.header("현재 CSV 파일 리스트")
+    if not file_list:
+        st.warning("CSV 파일이 없습니다.")
+    else:
+        for file in file_list:
+            st.write(file)
