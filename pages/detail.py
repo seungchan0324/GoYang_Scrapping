@@ -34,7 +34,16 @@ def delete_file(path):
 
 directory = "files"
 csv_files = [f for f in os.listdir(directory) if f.endswith(".csv")]
-columns_to_convert = ["평균 인원", "만족도_평균점수", "6개월후_취업률_퍼센트"]
+columns_to_convert = [
+    "모집인원",
+    "수강신청인원",
+    "수강확정인원",
+    "수료인원",
+    "평균 인원",
+    "만족도_평균점수",
+    "만족도_응답자수",
+    "6개월후_취업률",
+]
 
 if st.session_state.selected_file:
     file_path = os.path.join(directory, st.session_state.selected_file)
@@ -104,10 +113,11 @@ with st.sidebar:
                     "모집인원",
                     "수강신청인원",
                     "수강확정인원",
+                    "수료인원",
                     "평균 인원",
                     "전회차 인원",
                     "만족도_평균점수",
-                    "6개월후_취업률_퍼센트",
+                    "6개월후_취업률",
                 ]:
                     # 숫자 범위 필터
                     st.session_state.filters[i]["min"] = st.number_input(
@@ -154,10 +164,11 @@ if st.session_state.selected_file and df is not None:
                 "모집인원",
                 "수강신청인원",
                 "수강확정인원",
+                "수료인원",
                 "평균 인원",
                 "전회차 인원",
                 "만족도_평균점수",
-                "6개월후_취업률_퍼센트",
+                "6개월후_취업률",
             ]:
                 # 숫자 필터 적용
                 filtered_df = filtered_df[
@@ -174,24 +185,21 @@ if st.session_state.selected_file and df is not None:
         st.subheader("필터링 결과")
         st.dataframe(filtered_df)
         # 차트 생성
-        if (
-            "6개월후_취업률_퍼센트" in filtered_df.columns
-            and "개강일" in filtered_df.columns
-        ):
+        if "6개월후_취업률" in filtered_df.columns and "개강일" in filtered_df.columns:
             # Plotly 차트 생성
             st.subheader("취업률 기준 차트")
             fig = px.scatter(
                 filtered_df,
                 x="개강일",  # 가로축: 취업률
-                y="6개월후_취업률_퍼센트",  # 세로축: 개강일
+                y="6개월후_취업률",  # 세로축: 개강일
                 hover_data={
                     "기관명": True,  # 마우스오버 시 기관명 표시
                     "과정명": True,  # 마우스오버 시 과정명 표시
-                    "6개월후_취업률_퍼센트": True,  # 마우스오버 시 취업률 표시
+                    "6개월후_취업률": True,  # 마우스오버 시 취업률 표시
                     "개강일": True,  # 마우스오버 시 개강일 표시
                 },
                 labels={
-                    "6개월후_취업률_퍼센트": "취업률(%)",
+                    "6개월후_취업률": "취업률(%)",
                     "개강일": "개강일",
                     "기관명": "기관명",
                     "과정명": "과정명",
