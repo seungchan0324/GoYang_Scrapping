@@ -31,4 +31,9 @@ class File_Name_Selector:
         if "+" in training_name:
             training_name = training_name.replace("+", "_")
 
+        if keyword == "":
+            return (
+                f"{area_name}_{training_name}_{start_date_picker}_to_{end_date_picker}"
+            )
+
         return f"{keyword}_{area_name}_{training_name}_{start_date_picker}_to_{end_date_picker}"

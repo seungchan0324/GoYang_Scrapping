@@ -4,7 +4,7 @@ import plotly.express as px
 import os
 
 
-st.set_page_config(page_title="상세 페이지", layout="wide")
+st.set_page_config(page_title="상세 페이지", page_icon="📑", layout="wide")
 
 if "selected_file" not in st.session_state:
     st.session_state.selected_file = None
@@ -24,6 +24,12 @@ def add_filter():
 def remove_filter(index):
     if 0 <= index < len(st.session_state.filters):
         st.session_state.filters.pop(index)
+
+
+def delete_file(path):
+    st.session_state.selected_file = None
+    st.session_state.filters = []
+    os.remove(path)
 
 
 directory = "files"
@@ -130,7 +136,7 @@ with st.sidebar:
 
 if st.session_state.selected_file and df is not None:
     st.header(f"선택된 파일: {st.session_state.selected_file}")
-
+    download, delete = st.columns([1, 1])
     if st.session_state.filters:
         filtered_df = df.copy()
         for filter_item in st.session_state.filters:
@@ -200,19 +206,23 @@ if st.session_state.selected_file and df is not None:
             )
             st.plotly_chart(fig, use_container_width=True)
 
-        st.download_button(
-            label="필터링 된 CSV 다운로드",
-            data=filtered_df.to_csv(index=False),
-            file_name=f"filtered_{st.session_state.selected_file}",
-            mime="text/csv",
-        )
+        with download:
+            st.download_button(
+                label="필터링 된 CSV 다운로드",
+                data=filtered_df.to_csv(index=False),
+                file_name=f"filtered_{st.session_state.selected_file}",
+                mime="text/csv",
+            )
     else:
         st.dataframe(df)
-        st.download_button(
-            label="CSV 다운로드",
-            data=df.to_csv(index=False),
-            file_name=st.session_state.selected_file,
-            mime="text/csv",
-        )
+        with download:
+            st.download_button(
+                label="CSV 다운로드",
+                data=df.to_csv(index=False),
+                file_name=st.session_state.selected_file,
+                mime="text/csv",
+            )
+    with delete:
+        st.button("삭제", on_click=delete_file, args=(file_path,))
 else:
     st.info("왼쪽에서 CSV 파일을 선택해 주세요.")

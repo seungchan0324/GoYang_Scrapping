@@ -3,6 +3,8 @@ import logging
 import csv
 import requests
 import random
+import math
+import datetime as dt
 from bs4 import BeautifulSoup
 from file_name import File_Name_Selector
 
@@ -26,14 +28,16 @@ class Extractor_Goyong24:
         self.area = area
         self.training_data = training_data
         self.keyword = keyword
-        self.soup = self.edit_goyong_url()
+        url = self.make_goyong_url()
+        self.soup = self.fetch_soup(url)
 
     def start_crawling(self, update_status):
         links = self.link_url_crawling(self.soup)
         try:
             data_set = self.training_people_crawling(links, update_status)
-        except:
-            self.save_to_file(f"{len(self.data_set)}개 된 고용24", self.data_set)
+        except Exception as e:
+            logging.error(f"크롤링 실패: {e}")
+            date_set = []
 
         # 파일명
         file_name = self.file_name_selector.select(
@@ -45,37 +49,30 @@ class Extractor_Goyong24:
         )
         self.save_to_file(file_name, data_set)
 
-    # area 기본값 서울+전체
-    def edit_goyong_url(
-        self,
-        pages="1",
-    ):
-        goyong_url = f"https://www.work24.go.kr/hr/a/a/1100/trnnCrsInf.do?dghtSe=A&traingMthCd=A&tracseTme=16&endDate={self.end_date}&keyword1=&keyword2=&pageSize=10&orderBy=ASC&startDate_datepicker={self.start_date_picker}&currentTab=1&topMenuYn=&pop=&tracseId=AIG20230000412579&pageRow=100&totamtSuptYn=A&keywordTrngNm=&crseTracseSeNum=&keywordType=1&gb=&keyword={self.keyword}&kDgtlYn=&ncs=200103%7C전체%2C200102%7C전체%2C200101%7C전체&area={self.area}&orderKey=2&mberSe=&kdgLinkYn=&srchType=all_type&totTraingTime=A&crseTracseSe={self.training_data}&tranRegister=&mberId=&i2=A&pageId=2&programMenuIdentification=EBG020000000310&endDate_datepicker={self.end_date_picker}&monthGubun=&pageOrder=2ASC&pageIndex={pages}&bgrlInstYn=&startDate={self.start_date}&crseTracseSeKDT=&gvrnInstt=&selectNCSKeyword=&action=trnnCrsInfPost.do"
+    def make_goyong_url(self, pages=1) -> str:
+        return f"https://www.work24.go.kr/hr/a/a/1100/trnnCrsInf.do?dghtSe=A&traingMthCd=A&tracseTme=16&endDate={self.end_date}&keyword1=&keyword2=&pageSize=10&orderBy=ASC&startDate_datepicker={self.start_date_picker}&currentTab=1&topMenuYn=&pop=&tracseId=AIG20230000412579&pageRow=100&totamtSuptYn=A&keywordTrngNm=&crseTracseSeNum=&keywordType=1&gb=&keyword={self.keyword}&kDgtlYn=&ncs=200103%7C전체%2C200102%7C전체%2C200101%7C전체&area={self.area}&orderKey=2&mberSe=&kdgLinkYn=&srchType=all_type&totTraingTime=A&crseTracseSe={self.training_data}&tranRegister=&mberId=&i2=A&pageId=2&programMenuIdentification=EBG020000000310&endDate_datepicker={self.end_date_picker}&monthGubun=&pageOrder=2ASC&pageIndex={pages}&bgrlInstYn=&startDate={self.start_date}&crseTracseSeKDT=&gvrnInstt=&selectNCSKeyword=&action=trnnCrsInfPost.do"
 
+    def fetch_soup(self, url) -> BeautifulSoup:
         response = requests.get(
-            goyong_url,
+            url,
             headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
             },
         )
-        soup = BeautifulSoup(response.content, "html.parser")
-
-        return soup
+        return BeautifulSoup(response.content, "html.parser")
 
     def link_url_crawling(self, soup):
 
-        count = int(
-            soup.find("ul", class_="tab_title")
-            .find("span")
-            .text.split("(")[1]
-            .split(")")[0]
-        )
+        # 텝 갯수 확인
+        count_text = soup.find("ul", class_="tab_title").find("span").text
+        count_value = int(count_text.split("(")[1].split(")")[0])
+        page_n = math.ceil(count_value / 100)  # 소수점 올림
 
-        page_n = int(count / 100) + 1
         links = []
 
         for i in range(page_n):
-            soup = self.edit_goyong_url(pages=i + 1)
+            url = self.make_goyong_url(pages=i + 1)
+            soup = self.fetch_soup(url)
 
             titles = soup.find_all("h3", class_="link_text")
 
@@ -84,9 +81,6 @@ class Extractor_Goyong24:
                 links.append(link)
 
         return links
-
-    def wait(self, seconds=4):
-        time.sleep(random.uniform(1, seconds))
 
     def make_param(self, link):
         param = link.split("'")
@@ -125,20 +119,14 @@ class Extractor_Goyong24:
 
     def training_people_crawling(self, links, update_status):
         try:
-            self.data_set = []
+            data_set = []
             count = 1
             for link in links:
                 log_message = f"Step {count}/{len(links)}: 작업 진행 중..."
                 update_status(log_message)
                 url = self.info_url(link, "c")
 
-                response = requests.get(
-                    url,
-                    headers={
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-                    },
-                )
-                soup = BeautifulSoup(response.content, "html.parser")
+                soup = self.fetch_soup(url)
 
                 location = (
                     soup.find("ul", class_="infoList")
@@ -149,13 +137,7 @@ class Extractor_Goyong24:
 
                 url = self.info_url(link, "b")
 
-                response = requests.get(
-                    url,
-                    headers={
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-                    },
-                )
-                soup = BeautifulSoup(response.content, "html.parser")
+                soup = self.fetch_soup(url)
 
                 company = (
                     soup.find("section", id="section1")
@@ -194,9 +176,9 @@ class Extractor_Goyong24:
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
                 }
 
-                param = self.make_param(link)
+                params = self.make_param(link)
 
-                reponse = requests.get(ajax, param, headers=headers)
+                reponse = requests.get(ajax, params=params, headers=headers)
 
                 soup = BeautifulSoup(reponse.text, "html.parser")
 
@@ -206,10 +188,10 @@ class Extractor_Goyong24:
 
                 each_trainings_data = []
 
-                sum = 0
+                total_confirmed_students = 0
 
                 if not trainings:
-                    self.data_set.append(
+                    data_set.append(
                         {
                             "기관명": company,
                             "주소": location,
@@ -223,40 +205,40 @@ class Extractor_Goyong24:
                             "모집인원": "해당 정보 없음",
                             "수강신청인원": "해당 정보 없음",
                             "수강확정인원": "해당 정보 없음",
+                            "수료인원": "해당 정보 없음",
                             "평균 인원": "해당 정보 없음",
                             "전회차 인원": "해당 정보 없음",
                             "만족도_평균점수": "해당 정보 없음",
                             "만족도_응답자수": "해당 정보 없음",
-                            "6개월후_취업률_퍼센트": "해당 정보 없음",
-                            "6개월후_취업률_기준인원": "해당 정보 없음",
+                            "6개월후_취업률": "해당 정보 없음",
                         }
                     )
                     continue
 
-                for training in trainings:
+                pre_confirmed_student = 0
+                confirmed_student = 0
 
-                    # 회차
-                    recurrence = (
-                        training.find("p", class_="tit").text.split("모집")[0].strip()
-                    )
+                for training in trainings:
 
                     date = (
                         training.find("ul", class_="relList")
                         .find("span", class_="con")
                         .text.split("~")
                     )
+
                     # 훈련 시작날
-                    start_date = date[0].strip()
+                    start_date = dt.datetime.strptime(
+                        date[0].strip(), "%Y-%m-%d"
+                    ).date()
                     # 훈련 종료날
                     end_date = date[1].strip()
+
+                    pre_confirmed_student = confirmed_student
 
                     training_data = training.find("table", class_="view").find_all("td")
 
                     def text_splitter(n):
                         return training_data[n].text.strip()
-
-                    # 모집인원
-                    recruit_student = text_splitter(0)
 
                     # 수강확정인원/수강신청인원
                     number_of_student = text_splitter(1).split(" ")
@@ -264,6 +246,20 @@ class Extractor_Goyong24:
                     confirmed_student = int(number_of_student[1].split("명")[0])
                     # 수강신청인원
                     not_confirmed_student = int(number_of_student[5].split("명")[0])
+
+                    if (
+                        start_date < self.start_date_picker
+                        or start_date > self.end_date_picker
+                    ):
+                        continue
+
+                    # 회차
+                    recurrence = (
+                        training.find("p", class_="tit").text.split("모집")[0].strip()
+                    )
+
+                    # 모집인원
+                    recruit_student = text_splitter(0)
 
                     # 만족도
                     satisfaction = text_splitter(2)
@@ -308,7 +304,7 @@ class Extractor_Goyong24:
                             text_splitter(4).split("/")[1].replace(")", "")
                         )
 
-                    sum += confirmed_student
+                    total_confirmed_students += confirmed_student
 
                     each_trainings_data.append(
                         {
@@ -318,6 +314,7 @@ class Extractor_Goyong24:
                             "recruit_student": recruit_student,
                             "confirmed_student": confirmed_student,
                             "not_confirmed_student": not_confirmed_student,
+                            "pre_confirmed_student": pre_confirmed_student,
                             "satisfaction": satisfaction,
                             "satisfaction_people": satisfaction_people,
                             "employment_rate_6mon": employment_rate_6mon,
@@ -325,15 +322,16 @@ class Extractor_Goyong24:
                         }
                     )
 
-                average_student = round(sum / len(each_trainings_data), 2)
-                pre_confirmed_student = 0
+                average_student = round(
+                    total_confirmed_students / len(each_trainings_data), 2
+                )
 
                 for data in each_trainings_data:
 
-                    if pre_confirmed_student == 0:
-                        pre_confirmed_student = "해당 정보 없음"
+                    if data["pre_confirmed_student"] == 0:
+                        data["pre_confirmed_student"] = "해당 정보 없음"
 
-                    self.data_set.append(
+                    data_set.append(
                         {
                             "기관명": company,
                             "주소": location,
@@ -347,58 +345,49 @@ class Extractor_Goyong24:
                             "모집인원": data["recruit_student"],
                             "수강신청인원": data["not_confirmed_student"],
                             "수강확정인원": data["confirmed_student"],
+                            "수료인원": data["employment_rate_6mon_people"],
                             "평균 인원": average_student,
-                            "전회차 인원": pre_confirmed_student,
+                            "전회차 인원": data["pre_confirmed_student"],
                             "만족도_평균점수": data["satisfaction"],
                             "만족도_응답자수": data["satisfaction_people"],
-                            "6개월후_취업률_퍼센트": data["employment_rate_6mon"],
-                            "6개월후_취업률_기준인원": data[
-                                "employment_rate_6mon_people"
-                            ],
+                            "6개월후_취업률": data["employment_rate_6mon"],
                         }
                     )
 
-                    pre_confirmed_student = data["confirmed_student"]
-
-                print("append 완료")
                 count += 1
             logging.info("작업 완료!")
-            print("작업 완료!")
-            return self.data_set
+            return data_set
         except Exception as e:
-            print(f"Error during crawling: {e}")
-            return []
+            logging.error(f"크롤링 실패: {e}")
 
     def save_to_file(self, file_name, data_set):
-        file = open(f"./files/{file_name}.csv", "w", encoding="utf-8", newline="")
-        writer = csv.writer(file)
-        writer.writerow(
-            [
-                "기관명",
-                "주소",
-                "과정명",
-                "회차",
-                "직종",
-                "훈련유형",
-                "개강일",
-                "종강일",
-                "훈련시간",
-                "모집인원",
-                "수강신청인원",
-                "수강확정인원",
-                "평균 인원",
-                "전회차 인원",
-                "만족도_평균점수",
-                "만족도_응답자수",
-                "6개월후_취업률_퍼센트",
-                "6개월후_취업률_기준인원",
-            ]
-        )
+        with open(f"./files/{file_name}.csv", "w", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(
+                [
+                    "기관명",
+                    "주소",
+                    "과정명",
+                    "회차",
+                    "직종",
+                    "훈련유형",
+                    "개강일",
+                    "종강일",
+                    "훈련시간",
+                    "모집인원",
+                    "수강신청인원",
+                    "수강확정인원",
+                    "수료인원",
+                    "평균 인원",
+                    "전회차 인원",
+                    "만족도_평균점수",
+                    "만족도_응답자수",
+                    "6개월후_취업률",
+                ]
+            )
 
-        for data in data_set:
-            writer.writerow(data.values())
-
-        file.close()
+            for data in data_set:
+                writer.writerow(data.values())
 
     def test_url(self, urls):
         self.training_people_crawling(urls)

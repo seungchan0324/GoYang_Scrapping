@@ -182,12 +182,8 @@ if not st.session_state.search_started:
                 "끝 날짜", value=st.session_state.end_date
             )
 
-        st.session_state.param["start_date"] = (
-            str(st.session_state.start_date)
-        ).replace("-", "")
-        st.session_state.param["end_date"] = (str(st.session_state.end_date)).replace(
-            "-", ""
-        )
+        st.session_state.param["start_date"] = st.session_state.start_date
+        st.session_state.param["end_date"] = st.session_state.end_date
 
         st.write("\n")
 
@@ -246,6 +242,7 @@ if not st.session_state.search_started:
             st.button("검색 시작", disabled=search, on_click=search_state)
 
 else:
+    keyword_container.empty()
     date_container.empty()
     search_container.empty()
     location_container.empty()
