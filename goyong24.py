@@ -1,8 +1,7 @@
-import time
 import logging
 import csv
 import requests
-import random
+import re
 import math
 import datetime as dt
 from bs4 import BeautifulSoup
@@ -194,23 +193,23 @@ class Extractor_Goyong24:
                     data_set.append(
                         {
                             "기관명": company,
-                            "주소": location,
                             "과정명": title,
                             "회차": "해당 정보 없음",
-                            "직종": occupation,
-                            "훈련유형": training_type,
-                            "개강일": "해당 정보 없음",
-                            "종강일": "해당 정보 없음",
-                            "훈련시간": training_time,
                             "모집인원": "해당 정보 없음",
                             "수강신청인원": "해당 정보 없음",
                             "수강확정인원": "해당 정보 없음",
                             "수료인원": "해당 정보 없음",
                             "평균 인원": "해당 정보 없음",
                             "전회차 인원": "해당 정보 없음",
+                            "6개월후_취업률": "해당 정보 없음",
                             "만족도_평균점수": "해당 정보 없음",
                             "만족도_응답자수": "해당 정보 없음",
-                            "6개월후_취업률": "해당 정보 없음",
+                            "개강일": "해당 정보 없음",
+                            "종강일": "해당 정보 없음",
+                            "직종": occupation,
+                            "훈련유형": training_type,
+                            "훈련시간": training_time,
+                            "주소": location,
                         }
                     )
                     continue
@@ -241,11 +240,11 @@ class Extractor_Goyong24:
                         return training_data[n].text.strip()
 
                     # 수강확정인원/수강신청인원
-                    number_of_student = text_splitter(1).split(" ")
+                    number_of_student = re.findall(r"\d+", text_splitter(1))
                     # 수강확정인원
-                    confirmed_student = int(number_of_student[1].split("명")[0])
+                    confirmed_student = int(number_of_student[0])
                     # 수강신청인원
-                    not_confirmed_student = int(number_of_student[5].split("명")[0])
+                    not_confirmed_student = int(number_of_student[1])
 
                     if (
                         start_date < self.start_date_picker
@@ -254,25 +253,25 @@ class Extractor_Goyong24:
                         continue
 
                     # 회차
-                    recurrence = (
-                        training.find("p", class_="tit").text.split("모집")[0].strip()
+                    recurrence = re.findall(
+                        r"\d+", training.find("p", class_="tit").text
                     )
 
                     # 모집인원
                     recruit_student = text_splitter(0)
 
                     # 만족도
-                    satisfaction = text_splitter(2)
-                    if "( 명)" in satisfaction:
+                    satisfaction_data = text_splitter(2)
+                    satisfactions = re.findall(r"\d+", satisfaction_data)
+                    if len(satisfactions) == 2:
                         satisfaction = "해당 정보 없음"
                         satisfaction_people = "해당 정보 없음"
-                    else:
-                        score = satisfaction.split("점")[1].replace("기준", "").strip()
-                        people = satisfaction.split("점")[2].strip()
-                        satisfaction = score
-                        satisfaction_people = (
-                            people.split("명")[0].replace("(", "").strip()
-                        )
+                    elif len(satisfactions) == 3:
+                        satisfaction = satisfactions[1]
+                        satisfaction_people = satisfactions[2]
+                    elif len(satisfactions) == 4:
+                        satisfaction = f"{satisfactions[1]}.{satisfactions[2]}"
+                        satisfaction_people = satisfactions[3]
 
                     if (
                         text_splitter(4) == "훈련진행중"
@@ -334,23 +333,23 @@ class Extractor_Goyong24:
                     data_set.append(
                         {
                             "기관명": company,
-                            "주소": location,
                             "과정명": title,
                             "회차": data["recurrence"],
-                            "직종": occupation,
-                            "훈련유형": training_type,
-                            "개강일": data["start_date"],
-                            "종강일": data["end_date"],
-                            "훈련시간": training_time,
                             "모집인원": data["recruit_student"],
                             "수강신청인원": data["not_confirmed_student"],
                             "수강확정인원": data["confirmed_student"],
                             "수료인원": data["employment_rate_6mon_people"],
                             "평균 인원": average_student,
                             "전회차 인원": data["pre_confirmed_student"],
+                            "6개월후_취업률": data["employment_rate_6mon"],
                             "만족도_평균점수": data["satisfaction"],
                             "만족도_응답자수": data["satisfaction_people"],
-                            "6개월후_취업률": data["employment_rate_6mon"],
+                            "개강일": data["start_date"],
+                            "종강일": data["end_date"],
+                            "직종": occupation,
+                            "훈련유형": training_type,
+                            "훈련시간": training_time,
+                            "주소": location,
                         }
                     )
 
@@ -366,23 +365,23 @@ class Extractor_Goyong24:
             writer.writerow(
                 [
                     "기관명",
-                    "주소",
                     "과정명",
                     "회차",
-                    "직종",
-                    "훈련유형",
-                    "개강일",
-                    "종강일",
-                    "훈련시간",
                     "모집인원",
                     "수강신청인원",
                     "수강확정인원",
                     "수료인원",
                     "평균 인원",
                     "전회차 인원",
+                    "6개월후_취업률",
                     "만족도_평균점수",
                     "만족도_응답자수",
-                    "6개월후_취업률",
+                    "개강일",
+                    "종강일",
+                    "직종",
+                    "훈련유형",
+                    "훈련시간",
+                    "주소",
                 ]
             )
 

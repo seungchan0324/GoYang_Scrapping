@@ -6,16 +6,16 @@ class File_Name_Selector:
     def select(self, area, training_data, start_date_picker, end_date_picker, keyword):
         if " " in keyword:
             keyword = keyword.replace(" ", "-")
-        if "%C2" in area:
-            area_name = ",".join(area.split("서울+")[1] for area in area.split("%C2"))
+        if "%2C" in area:
+            area_name = ",".join(area.split("서울+")[1] for area in area.split("%2C"))
         elif "전체" in area:
             area_name = "서울전체"
         else:
             area_name = area.split("서울+")[1]
 
-        if "%C2" in training_data:
+        if "%2C" in training_data:
             training_name = ",".join(
-                train.split("%7C")[1] for train in training_data.split("%C2")
+                train.split("%7C")[1] for train in training_data.split("%2C")
             )
         elif "전체" in training_data:
             training_name = "훈련전체"
@@ -31,9 +31,10 @@ class File_Name_Selector:
         if "+" in training_name:
             training_name = training_name.replace("+", "_")
 
-        if keyword == "":
-            return (
-                f"{area_name}_{training_name}_{start_date_picker}_to_{end_date_picker}"
-            )
+        if keyword != "":
+            keyword += "_"
 
-        return f"{keyword}_{area_name}_{training_name}_{start_date_picker}_to_{end_date_picker}"
+        if "-01-01" in str(start_date_picker) and "-12-31" in str(end_date_picker):
+            year = str(start_date_picker).replace("-01-01", "")
+            return f"{keyword}{area_name}_{training_name}_{year}년도"
+        return f"{keyword}{area_name}_{training_name}_{start_date_picker}_to_{end_date_picker}"

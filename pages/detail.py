@@ -32,6 +32,87 @@ def delete_file(path):
     os.remove(path)
 
 
+def create_chart(df):
+    # 차트 생성
+    if "6개월후_취업률" in df.columns and "개강일" in df.columns:
+        # Plotly 차트 생성
+        st.subheader("취업률 기준 차트")
+        fig = px.scatter(
+            df,
+            x="개강일",  # 가로축: 취업률
+            y="6개월후_취업률",  # 세로축: 개강일
+            hover_data={
+                "기관명": True,  # 마우스오버 시 기관명 표시
+                "과정명": True,  # 마우스오버 시 과정명 표시
+                "6개월후_취업률": True,  # 마우스오버 시 취업률 표시
+                "개강일": True,  # 마우스오버 시 개강일 표시
+            },
+            labels={
+                "6개월후_취업률": "취업률(%)",
+                "개강일": "개강일",
+                "기관명": "기관명",
+                "과정명": "과정명",
+            },
+        )
+        fig.update_layout(
+            xaxis_title="개강일",
+            yaxis_title="취업률(%)",
+            title="6개월 후 취업률과 개강일 기준 차트",
+            title_x=0.5,
+            template="plotly_white",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+
+# CSS 및 HTML 테이블 렌더링
+def render_fixed_column_table(df):
+    st.markdown(
+        """
+        <style>
+        .table-container {
+            overflow-x: auto; /* 가로 스크롤 허용 */
+            overflow-y: auto; /* 세로 스크롤 허용 */
+            height: 500px; /* 테이블 높이 고정 */
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+            position: sticky;
+            top: 0; /* 헤더 고정 */
+            z-index: 2;
+        }
+        td:nth-child(2), th:nth-child(2) {
+            position: sticky;
+            left: 0; /* 두 번째 컬럼 고정 (과정명) */
+            background-color: #fff;
+            z-index: 1;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # HTML 테이블 생성
+    table_html = df.to_html(index=False, escape=False)
+    st.markdown(
+        f"""
+    <div class="table-container">
+        {table_html}
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+
 directory = "files"
 csv_files = [f for f in os.listdir(directory) if f.endswith(".csv")]
 columns_to_convert = [
@@ -41,9 +122,9 @@ columns_to_convert = [
     "수료인원",
     "평균 인원",
     "전회차 인원",
+    "6개월후_취업률",
     "만족도_평균점수",
     "만족도_응답자수",
-    "6개월후_취업률",
 ]
 
 if st.session_state.selected_file:
@@ -110,15 +191,15 @@ with st.sidebar:
                         key=f"filter-end-date-{i}",
                     )
                 elif selected_column in [
-                    "훈련시간",
                     "모집인원",
                     "수강신청인원",
                     "수강확정인원",
                     "수료인원",
                     "평균 인원",
                     "전회차 인원",
-                    "만족도_평균점수",
                     "6개월후_취업률",
+                    "만족도_평균점수",
+                    "훈련시간",
                 ]:
                     # 숫자 범위 필터
                     st.session_state.filters[i]["min"] = st.number_input(
@@ -161,15 +242,15 @@ if st.session_state.selected_file and df is not None:
                     & (pd.to_datetime(filtered_df[column]) <= end_date)
                 ]
             elif column in [
-                "훈련시간",
                 "모집인원",
                 "수강신청인원",
                 "수강확정인원",
                 "수료인원",
                 "평균 인원",
                 "전회차 인원",
-                "만족도_평균점수",
                 "6개월후_취업률",
+                "만족도_평균점수",
+                "훈련시간",
             ]:
                 # 숫자 필터 적용
                 filtered_df = filtered_df[
@@ -185,35 +266,7 @@ if st.session_state.selected_file and df is not None:
                 ]
         st.subheader("필터링 결과")
         st.dataframe(filtered_df)
-        # 차트 생성
-        if "6개월후_취업률" in filtered_df.columns and "개강일" in filtered_df.columns:
-            # Plotly 차트 생성
-            st.subheader("취업률 기준 차트")
-            fig = px.scatter(
-                filtered_df,
-                x="개강일",  # 가로축: 취업률
-                y="6개월후_취업률",  # 세로축: 개강일
-                hover_data={
-                    "기관명": True,  # 마우스오버 시 기관명 표시
-                    "과정명": True,  # 마우스오버 시 과정명 표시
-                    "6개월후_취업률": True,  # 마우스오버 시 취업률 표시
-                    "개강일": True,  # 마우스오버 시 개강일 표시
-                },
-                labels={
-                    "6개월후_취업률": "취업률(%)",
-                    "개강일": "개강일",
-                    "기관명": "기관명",
-                    "과정명": "과정명",
-                },
-            )
-            fig.update_layout(
-                xaxis_title="개강일",
-                yaxis_title="취업률(%)",
-                title="6개월 후 취업률과 개강일 기준 차트",
-                title_x=0.5,
-                template="plotly_white",
-            )
-            st.plotly_chart(fig, use_container_width=True)
+        create_chart(filtered_df)
 
         with download:
             st.download_button(
@@ -224,6 +277,7 @@ if st.session_state.selected_file and df is not None:
             )
     else:
         st.dataframe(df)
+        create_chart(df)
         with download:
             st.download_button(
                 label="CSV 다운로드",

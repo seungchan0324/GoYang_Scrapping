@@ -69,8 +69,8 @@ def search_state():
 
 
 def start_crawling(start_date, end_date, location_data, training_data, keyword):
-    start_date_picker = (str(start_date)).replace("-", "")
-    end_date_picker = (str(end_date)).replace("-", "")
+    start_date_picker = start_date
+    end_date_picker = end_date
     file_name = file_name_selector.select(
         location_data, training_data, start_date_picker, end_date_picker, keyword
     )
@@ -92,8 +92,9 @@ def toggle_checkbox(state_key, key_name, key_code):
     else:
         if "A%7C전체" in st.session_state[state_key]:
             st.session_state[state_key].remove("A%7C전체")
-        elif "11%7C서울+전체" in st.session_state["location_checked"]:
+        elif "11%7C서울+전체" in st.session_state[state_key]:
             st.session_state[state_key].remove("11%7C서울+전체")
+
         if key_code in st.session_state[state_key]:
             st.session_state[state_key].remove(key_code)
         else:
@@ -229,12 +230,10 @@ if not st.session_state.search_started:
             len(st.session_state["train_checked"]) == 0
             or len(st.session_state["location_checked"]) == 0
         )
-        st.session_state.param["location_data"] = "%C2".join(
-            st.session_state["location_checked"]
-        )
-        st.session_state.param["training_data"] = "%C2".join(
-            st.session_state["train_checked"]
-        )
+        location_data = sorted(st.session_state["location_checked"])
+        train_data = sorted(st.session_state["train_checked"])
+        st.session_state.param["location_data"] = "%2C".join(location_data)
+        st.session_state.param["training_data"] = "%2C".join(train_data)
         col1, col2 = st.columns([5, 1])
         with col1:
             log_display = st.empty()
