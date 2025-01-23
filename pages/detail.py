@@ -99,11 +99,15 @@ def create_average_dataframe(df):
         df.groupby(["기관명", "직종"])
         .agg(
             평균취업률=("6개월후_취업률", "mean"),  # 평균 취업률
+            평균수료인원=("수료인원", "mean"),
             과정_진행_횟수=("회차", "count"),  # 회차 수 계산
         )
         .reset_index()
     )
     average_employment_df["평균취업률"] = average_employment_df["평균취업률"].round(2)
+    average_employment_df["평균수료인원"] = average_employment_df["평균수료인원"].round(
+        2
+    )
     average_employment_df = average_employment_df.sort_values(
         by="평균취업률", ascending=False
     )
