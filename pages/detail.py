@@ -17,7 +17,7 @@ table td:nth-child(2){
 </style>
 """
 
-st.set_page_config(page_title="상세 페이지", page_icon="📑", layout="wide")
+st.set_page_config(page_title="SolTrack:Detail", page_icon="📑", layout="wide")
 
 st.markdown(custom_css, unsafe_allow_html=True)
 
@@ -48,60 +48,64 @@ def delete_file(path):
 
 
 # 차트 생성
+import pandas as pd
+import plotly.express as px
+import streamlit as st
+
+
 def create_chart(df):
-    # 색상 데이터 추가
-    df["색상"] = df["기관명"].apply(
-        lambda x: "솔데스크" if x == "(주)솔데스크" else "기타"
-    )
+    # 차트 생성
+    if "6개월후_취업률" in df.columns and "개강일" in df.columns:
 
-    # customdata에 툴팁 데이터를 원하는 순서로 삽입
-    df["custom_hover"] = (
-        "기관명: "
-        + df["기관명"].astype(str)
-        + "<br>"
-        + "과정명: "
-        + df["과정명"].astype(str)
-        + "<br>"
-        + "취업률: "
-        + df["6개월후_취업률"].astype(str)
-        + "<br>"
-    )
+        # 색상 데이터 추가
+        df["색상"] = df["기관명"].apply(
+            lambda x: "솔데스크" if x == "(주)솔데스크" else "기타"
+        )
 
-    # Plotly 차트 생성
-    st.subheader("취업률 기준 차트")
-    fig = px.scatter(
-        df,
-        y="6개월후_취업률",  # 세로축
-        x="개강일",  # 가로축
-        color="색상",  # 색상 조건 지정
-        color_discrete_map={  # 색상 매핑
-            "솔데스크": "red",
-            "기타": "lightblue",
-        },
-        labels={
-            "6개월후_취업률": "취업률(%)",
-            "개강일": "개강일",
-            "기관명": "기관명",
-            "과정명": "과정명",
-        },
-    )
+        # hover_data 순서 재조정
+        df["hover_기관명"] = df["기관명"]
+        df["hover_과정명"] = df["과정명"]
+        df["hover_취업률"] = df["6개월후_취업률"].astype(str) + "%"
+        df["hover_개강일"] = df["개강일"].astype(str)
 
-    # 툴팁 커스터마이징
-    fig.update_traces(
-        hovertemplate="%{customdata}<extra></extra>",  # customdata를 툴팁으로 사용
-        customdata=df["custom_hover"],  # customdata로 지정
-    )
+        # Plotly 차트 생성
+        st.subheader("취업률 기준 차트")
+        fig = px.scatter(
+            df,
+            y="6개월후_취업률",  # 세로축
+            x="개강일",  # 가로축
+            color="색상",  # 색상 조건 지정
+            color_discrete_map={  # 색상 매핑
+                "솔데스크": "red",
+                "기타": "lightblue",
+            },
+            hover_data={
+                "색상": False,
+                "개강일": False,
+                "6개월후_취업률": False,
+                "hover_기관명": True,
+                "hover_과정명": True,
+                "hover_취업률": True,
+                "hover_개강일": True,
+            },
+            labels={
+                "hover_기관명": "기관명",
+                "hover_과정명": "과정명",
+                "hover_취업률": "취업률(%)",
+                "hover_개강일": "개강일",
+            },
+        )
 
-    # 레이아웃 업데이트
-    fig.update_layout(
-        xaxis_title="개강일",
-        yaxis_title="취업률(%)",
-        title="6개월 후 취업률과 개강일 기준 차트",
-        title_x=0.5,
-        template="plotly_white",
-    )
+        # 레이아웃 업데이트
+        fig.update_layout(
+            xaxis_title="개강일",
+            yaxis_title="취업률(%)",
+            title="6개월 후 취업률과 개강일 기준 차트",
+            title_x=0.5,
+            template="plotly_white",
+        )
 
-    st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
 
 
 def create_average_dataframe(df):

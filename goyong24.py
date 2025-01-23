@@ -241,6 +241,13 @@ class Extractor_Goyong24:
                     def text_splitter(n):
                         return training_data[n].text.strip()
 
+                    def employment_rate(per):
+                        return (
+                            float(per[0])
+                            if len(per) == 3
+                            else float(f"{per[0]}.{per[1]}")
+                        )
+
                     # 수강확정인원/수강신청인원
                     number_of_student = re.findall(r"\d+", text_splitter(1))
                     # 수강확정인원
@@ -257,7 +264,7 @@ class Extractor_Goyong24:
                     # 회차
                     recurrence = re.findall(
                         r"\d+", training.find("p", class_="tit").text
-                    )
+                    )[0]
 
                     # 모집인원
                     recruit_student = text_splitter(0)
@@ -275,38 +282,31 @@ class Extractor_Goyong24:
                         satisfaction = f"{satisfactions[1]}.{satisfactions[2]}"
                         satisfaction_people = satisfactions[3]
 
-                    insured_6month = text_splitter(4)
-                    not_insure_6month = text_splitter(6)
-
-                    if (
-                        text_splitter(4) == "훈련진행중"
-                        or text_splitter(4) == "해당없음"
-                        or text_splitter(4).split("%")[0] == ""
-                    ):
-                        employment_rate_6mon = "6개월이 안 지났거나 해당 정보 없음"
-                        employment_rate_6mon_people = (
-                            "6개월이 안 지났거나 해당 정보 없음"
-                        )
+                    if len(training_data) < 7:
+                        employment_rate_6mon = "해당 정보 없음"
+                        employment_rate_6mon_people = "해당 정보 없음"
                     else:
-                        # 취업률 3개월
-                        # employment_rate_3mon = (
-                        #     str(
-                        #         float(text_splitter(3).split("%")[0])
-                        #         + float(text_splitter(5).split("%")[0])
-                        #     )
-                        #     + "%"
-                        # )
-                        # 취업률 6개월
-                        employment_rate_6mon = str(
-                            round(
-                                float(text_splitter(4).split("%")[0])
-                                + float(text_splitter(6).split("%")[0]),
-                                2,
+                        insured_6month_split = re.findall(r"\d+", text_splitter(4))
+                        not_insure_6month_split = re.findall(r"\d+", text_splitter(6))
+
+                        if (
+                            len(insured_6month_split) == 0
+                            or len(insured_6month_split) == 1
+                        ):
+                            employment_rate_6mon = "해당 정보 없음"
+                            employment_rate_6mon_people = "해당 정보 없음"
+                        elif (
+                            len(insured_6month_split) == 3
+                            or len(insured_6month_split) == 4
+                        ):
+                            employment_rate_6mon = employment_rate(
+                                insured_6month_split
+                            ) + employment_rate(not_insure_6month_split)
+                            employment_rate_6mon_people = (
+                                insured_6month_split[2]
+                                if len(insured_6month_split) == 3
+                                else insured_6month_split[3]
                             )
-                        )
-                        employment_rate_6mon_people = (
-                            text_splitter(4).split("/")[1].replace(")", "")
-                        )
 
                     total_confirmed_students += confirmed_student
 
