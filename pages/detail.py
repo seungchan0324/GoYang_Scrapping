@@ -127,7 +127,7 @@ def create_average_dataframe(df):
 
 
 directory = "files"
-csv_files = [f for f in os.listdir(directory) if f.endswith(".csv")]
+csv_files = sorted([f for f in os.listdir(directory) if f.endswith(".csv")])
 columns_to_convert = [
     "모집인원",
     "수강신청인원",

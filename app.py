@@ -259,7 +259,7 @@ else:
 
 with st.sidebar:
     files_path = "./files"
-    file_list = os.listdir(files_path)
+    file_list = sorted(os.listdir(files_path))
     st.header("현재 CSV 파일 리스트")
     if not file_list:
         st.warning("CSV 파일이 없습니다.")
