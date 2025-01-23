@@ -48,11 +48,6 @@ def delete_file(path):
 
 
 # 차트 생성
-import pandas as pd
-import plotly.express as px
-import streamlit as st
-
-
 def create_chart(df):
     # 차트 생성
     if "6개월후_취업률" in df.columns and "개강일" in df.columns:
@@ -61,12 +56,6 @@ def create_chart(df):
         df["색상"] = df["기관명"].apply(
             lambda x: "솔데스크" if x == "(주)솔데스크" else "기타"
         )
-
-        # hover_data 순서 재조정
-        df["hover_기관명"] = df["기관명"]
-        df["hover_과정명"] = df["과정명"]
-        df["hover_취업률"] = df["6개월후_취업률"].astype(str) + "%"
-        df["hover_개강일"] = df["개강일"].astype(str)
 
         # Plotly 차트 생성
         st.subheader("취업률 기준 차트")
@@ -79,24 +68,21 @@ def create_chart(df):
                 "솔데스크": "red",
                 "기타": "lightblue",
             },
+            # 툴팁 순서를 명시적으로 지정
             hover_data={
-                "색상": False,
-                "개강일": False,
-                "6개월후_취업률": False,
-                "hover_기관명": True,
-                "hover_과정명": True,
-                "hover_취업률": True,
-                "hover_개강일": True,
+                "개강일": True,  # 1. 개강일
+                "6개월후_취업률": True,  # 2. 취업률
+                "기관명": True,  # 3. 기관명
+                "과정명": True,  # 4. 과정명
+                "색상": False,  # 색상 데이터 숨기기
             },
             labels={
-                "hover_기관명": "기관명",
-                "hover_과정명": "과정명",
-                "hover_취업률": "취업률(%)",
-                "hover_개강일": "개강일",
+                "6개월후_취업률": "취업률(%)",
+                "개강일": "개강일",
+                "기관명": "기관명",
+                "과정명": "과정명",
             },
         )
-
-        # 레이아웃 업데이트
         fig.update_layout(
             xaxis_title="개강일",
             yaxis_title="취업률(%)",
@@ -104,8 +90,7 @@ def create_chart(df):
             title_x=0.5,
             template="plotly_white",
         )
-
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config={"scrollZoom": False})
 
 
 def create_average_dataframe(df):
