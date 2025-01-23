@@ -170,6 +170,8 @@ class Extractor_Goyong24:
 
                 url = self.info_url(link, "b")
 
+                print(url)
+
                 headers = {
                     "Referer": url,
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
@@ -272,6 +274,9 @@ class Extractor_Goyong24:
                     elif len(satisfactions) == 4:
                         satisfaction = f"{satisfactions[1]}.{satisfactions[2]}"
                         satisfaction_people = satisfactions[3]
+
+                    insured_6month = text_splitter(4)
+                    not_insure_6month = text_splitter(6)
 
                     if (
                         text_splitter(4) == "훈련진행중"

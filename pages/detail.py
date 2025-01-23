@@ -47,63 +47,79 @@ def delete_file(path):
     os.remove(path)
 
 
+# 차트 생성
 def create_chart(df):
-    # 차트 생성
-    if "6개월후_취업률" in df.columns and "개강일" in df.columns:
+    # 색상 데이터 추가
+    df["색상"] = df["기관명"].apply(
+        lambda x: "솔데스크" if x == "(주)솔데스크" else "기타"
+    )
 
-        # 색상 데이터 추가
-        df["색상"] = df["기관명"].apply(
-            lambda x: "솔데스크" if x == "(주)솔데스크" else "기타"
+    # customdata에 툴팁 데이터를 원하는 순서로 삽입
+    df["custom_hover"] = (
+        "기관명: "
+        + df["기관명"].astype(str)
+        + "<br>"
+        + "과정명: "
+        + df["과정명"].astype(str)
+        + "<br>"
+        + "취업률: "
+        + df["6개월후_취업률"].astype(str)
+        + "<br>"
+    )
+
+    # Plotly 차트 생성
+    st.subheader("취업률 기준 차트")
+    fig = px.scatter(
+        df,
+        y="6개월후_취업률",  # 세로축
+        x="개강일",  # 가로축
+        color="색상",  # 색상 조건 지정
+        color_discrete_map={  # 색상 매핑
+            "솔데스크": "red",
+            "기타": "lightblue",
+        },
+        labels={
+            "6개월후_취업률": "취업률(%)",
+            "개강일": "개강일",
+            "기관명": "기관명",
+            "과정명": "과정명",
+        },
+    )
+
+    # 툴팁 커스터마이징
+    fig.update_traces(
+        hovertemplate="%{customdata}<extra></extra>",  # customdata를 툴팁으로 사용
+        customdata=df["custom_hover"],  # customdata로 지정
+    )
+
+    # 레이아웃 업데이트
+    fig.update_layout(
+        xaxis_title="개강일",
+        yaxis_title="취업률(%)",
+        title="6개월 후 취업률과 개강일 기준 차트",
+        title_x=0.5,
+        template="plotly_white",
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def create_average_dataframe(df):
+    st.subheader("기업별 평균 취업률")
+    average_employment_df = (
+        df.groupby(["기관명", "직종"])
+        .agg(
+            평균취업률=("6개월후_취업률", "mean"),  # 평균 취업률
+            과정_진행_횟수=("회차", "count"),  # 회차 수 계산
         )
-
-        # customdata에 툴팁 데이터를 원하는 순서로 삽입
-        df["custom_hover"] = (
-            "기관명: "
-            + df["기관명"].astype(str)
-            + "<br>"
-            + "과정명: "
-            + df["과정명"].astype(str)
-            + "<br>"
-            + "취업률: "
-            + df["6개월후_취업률"].astype(str)
-            + "<br>"
-        )
-
-        # Plotly 차트 생성
-        st.subheader("취업률 기준 차트")
-        fig = px.scatter(
-            df,
-            y="6개월후_취업률",  # 세로축
-            x="개강일",  # 가로축
-            color="색상",  # 색상 조건 지정
-            color_discrete_map={  # 색상 매핑
-                "솔데스크": "red",
-                "기타": "lightblue",
-            },
-            labels={
-                "6개월후_취업률": "취업률(%)",
-                "개강일": "개강일",
-                "기관명": "기관명",
-                "과정명": "과정명",
-            },
-        )
-
-        # 툴팁 커스터마이징
-        fig.update_traces(
-            hovertemplate="%{customdata}<extra></extra>",  # customdata를 툴팁으로 사용
-            customdata=df["custom_hover"],  # customdata로 지정
-        )
-
-        # 레이아웃 업데이트
-        fig.update_layout(
-            xaxis_title="개강일",
-            yaxis_title="취업률(%)",
-            title="6개월 후 취업률과 개강일 기준 차트",
-            title_x=0.5,
-            template="plotly_white",
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
+        .reset_index()
+    )
+    average_employment_df["평균취업률"] = average_employment_df["평균취업률"].round(2)
+    average_employment_df = average_employment_df.sort_values(
+        by="평균취업률", ascending=False
+    )
+    average_employment_df.set_index("기관명", inplace=True)
+    st.dataframe(average_employment_df, width=1000)
 
 
 directory = "files"
@@ -119,7 +135,6 @@ columns_to_convert = [
     "만족도_평균점수",
     "만족도_응답자수",
 ]
-
 if st.session_state.selected_file:
     file_path = os.path.join(directory, st.session_state.selected_file)
     try:
@@ -131,7 +146,8 @@ if st.session_state.selected_file:
     for column in columns_to_convert:
         if column in df.columns:
             df[column] = pd.to_numeric(df[column], errors="coerce")
-    employment_rate = {}
+
+
 else:
     df = None
 
@@ -225,6 +241,13 @@ if st.session_state.selected_file and df is not None:
     download, delete = st.columns([1, 1])
     if st.session_state.filters:
         filtered_df = df.copy()
+        with download:
+            st.download_button(
+                label="필터링 된 CSV 다운로드",
+                data=filtered_df.to_csv(index=False),
+                file_name=f"filtered_{st.session_state.selected_file}",
+                mime="text/csv",
+            )
         for filter_item in st.session_state.filters:
             column = filter_item["column"]
             if column in ["개강일", "종강일"]:
@@ -263,19 +286,10 @@ if st.session_state.selected_file and df is not None:
         display_filtered_df.set_index("기관명", inplace=True)
         st.dataframe(display_filtered_df)
         create_chart(filtered_df)
-
-        with download:
-            st.download_button(
-                label="필터링 된 CSV 다운로드",
-                data=filtered_df.to_csv(index=False),
-                file_name=f"filtered_{st.session_state.selected_file}",
-                mime="text/csv",
-            )
+        _, av_df, _ = st.columns([1, 2, 1])
+        with av_df:
+            create_average_dataframe(filtered_df)
     else:
-        display_df = df.copy()
-        display_df.set_index("기관명", inplace=True)
-        st.dataframe(display_df)
-        create_chart(df)
         with download:
             st.download_button(
                 label="CSV 다운로드",
@@ -283,7 +297,16 @@ if st.session_state.selected_file and df is not None:
                 file_name=st.session_state.selected_file,
                 mime="text/csv",
             )
+        display_df = df.copy()
+        display_df.set_index("기관명", inplace=True)
+        st.dataframe(display_df)
+        create_chart(df)
+        _, av_df, _ = st.columns([1, 3, 1])
+        with av_df:
+            create_average_dataframe(df)
+
     with delete:
         st.button("삭제", on_click=delete_file, args=(file_path,))
+
 else:
     st.info("왼쪽에서 CSV 파일을 선택해 주세요.")
