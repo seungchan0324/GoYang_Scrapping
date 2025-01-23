@@ -51,27 +51,34 @@ def create_chart(df):
     # 차트 생성
     if "6개월후_취업률" in df.columns and "개강일" in df.columns:
 
+        # 색상 데이터 추가
         df["색상"] = df["기관명"].apply(
             lambda x: "솔데스크" if x == "(주)솔데스크" else "기타"
+        )
+
+        # customdata에 툴팁 데이터를 원하는 순서로 삽입
+        df["custom_hover"] = (
+            "기관명: "
+            + df["기관명"].astype(str)
+            + "<br>"
+            + "과정명: "
+            + df["과정명"].astype(str)
+            + "<br>"
+            + "취업률: "
+            + df["6개월후_취업률"].astype(str)
+            + "<br>"
         )
 
         # Plotly 차트 생성
         st.subheader("취업률 기준 차트")
         fig = px.scatter(
             df,
-            x="개강일",  # 가로축: 취업률
-            y="6개월후_취업률",  # 세로축: 개강일
+            y="6개월후_취업률",  # 세로축
+            x="개강일",  # 가로축
             color="색상",  # 색상 조건 지정
             color_discrete_map={  # 색상 매핑
                 "솔데스크": "red",
                 "기타": "lightblue",
-            },
-            hover_data={
-                "기관명": True,  # 마우스오버 시 기관명 표시
-                "과정명": True,  # 마우스오버 시 과정명 표시
-                "6개월후_취업률": True,  # 마우스오버 시 취업률 표시
-                "개강일": True,  # 마우스오버 시 개강일 표시
-                "색상": False,  # 마우스오버 시 개강일 표시
             },
             labels={
                 "6개월후_취업률": "취업률(%)",
@@ -81,6 +88,13 @@ def create_chart(df):
             },
         )
 
+        # 툴팁 커스터마이징
+        fig.update_traces(
+            hovertemplate="%{customdata}<extra></extra>",  # customdata를 툴팁으로 사용
+            customdata=df["custom_hover"],  # customdata로 지정
+        )
+
+        # 레이아웃 업데이트
         fig.update_layout(
             xaxis_title="개강일",
             yaxis_title="취업률(%)",
@@ -88,6 +102,7 @@ def create_chart(df):
             title_x=0.5,
             template="plotly_white",
         )
+
         st.plotly_chart(fig, use_container_width=True)
 
 
