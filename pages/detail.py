@@ -1,10 +1,25 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from collections import defaultdict
 import os
 
+custom_css = """
+<style>
+/*sticky 적용*/
+table td:nth-child(2){
+  position: -webkit-sticky;
+  position: sticky; 
+  background-color: white;
+  left: 0;
+  z-index: 99;
+}
+</style>
+"""
 
 st.set_page_config(page_title="상세 페이지", page_icon="📑", layout="wide")
+
+st.markdown(custom_css, unsafe_allow_html=True)
 
 if "selected_file" not in st.session_state:
     st.session_state.selected_file = None
@@ -35,17 +50,28 @@ def delete_file(path):
 def create_chart(df):
     # 차트 생성
     if "6개월후_취업률" in df.columns and "개강일" in df.columns:
+
+        df["색상"] = df["기관명"].apply(
+            lambda x: "솔데스크" if x == "(주)솔데스크" else "기타"
+        )
+
         # Plotly 차트 생성
         st.subheader("취업률 기준 차트")
         fig = px.scatter(
             df,
             x="개강일",  # 가로축: 취업률
             y="6개월후_취업률",  # 세로축: 개강일
+            color="색상",  # 색상 조건 지정
+            color_discrete_map={  # 색상 매핑
+                "솔데스크": "red",
+                "기타": "lightblue",
+            },
             hover_data={
                 "기관명": True,  # 마우스오버 시 기관명 표시
                 "과정명": True,  # 마우스오버 시 과정명 표시
                 "6개월후_취업률": True,  # 마우스오버 시 취업률 표시
                 "개강일": True,  # 마우스오버 시 개강일 표시
+                "색상": False,  # 마우스오버 시 개강일 표시
             },
             labels={
                 "6개월후_취업률": "취업률(%)",
@@ -54,6 +80,7 @@ def create_chart(df):
                 "과정명": "과정명",
             },
         )
+
         fig.update_layout(
             xaxis_title="개강일",
             yaxis_title="취업률(%)",
@@ -62,55 +89,6 @@ def create_chart(df):
             template="plotly_white",
         )
         st.plotly_chart(fig, use_container_width=True)
-
-
-# CSS 및 HTML 테이블 렌더링
-def render_fixed_column_table(df):
-    st.markdown(
-        """
-        <style>
-        .table-container {
-            overflow-x: auto; /* 가로 스크롤 허용 */
-            overflow-y: auto; /* 세로 스크롤 허용 */
-            height: 500px; /* 테이블 높이 고정 */
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            table-layout: fixed;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f4f4f4;
-            position: sticky;
-            top: 0; /* 헤더 고정 */
-            z-index: 2;
-        }
-        td:nth-child(2), th:nth-child(2) {
-            position: sticky;
-            left: 0; /* 두 번째 컬럼 고정 (과정명) */
-            background-color: #fff;
-            z-index: 1;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # HTML 테이블 생성
-    table_html = df.to_html(index=False, escape=False)
-    st.markdown(
-        f"""
-    <div class="table-container">
-        {table_html}
-    </div>
-    """,
-        unsafe_allow_html=True,
-    )
 
 
 directory = "files"
@@ -138,6 +116,7 @@ if st.session_state.selected_file:
     for column in columns_to_convert:
         if column in df.columns:
             df[column] = pd.to_numeric(df[column], errors="coerce")
+    employment_rate = {}
 else:
     df = None
 
@@ -265,7 +244,9 @@ if st.session_state.selected_file and df is not None:
                     .str.contains(filter_item["value"], na=False)
                 ]
         st.subheader("필터링 결과")
-        st.dataframe(filtered_df)
+        display_filtered_df = filtered_df.copy()
+        display_filtered_df.set_index("기관명", inplace=True)
+        st.dataframe(display_filtered_df)
         create_chart(filtered_df)
 
         with download:
@@ -276,7 +257,9 @@ if st.session_state.selected_file and df is not None:
                 mime="text/csv",
             )
     else:
-        st.dataframe(df)
+        display_df = df.copy()
+        display_df.set_index("기관명", inplace=True)
+        st.dataframe(display_df)
         create_chart(df)
         with download:
             st.download_button(
