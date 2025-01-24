@@ -75,10 +75,12 @@ def create_chart(df):
             },
             # 툴팁 순서를 명시적으로 지정
             hover_data={
-                "개강일": True,  # 1. 개강일
-                "6개월후_취업률": True,  # 2. 취업률
                 "기관명": True,  # 3. 기관명
                 "과정명": True,  # 4. 과정명
+                "개강일": True,  # 1. 개강일
+                "6개월후_취업률": True,  # 2. 취업률
+                "강사명": True,
+                "만족도_평균점수": True,
                 "색상": False,  # 색상 데이터 숨기기
             },
             labels={
@@ -86,6 +88,8 @@ def create_chart(df):
                 "개강일": "개강일",
                 "기관명": "기관명",
                 "과정명": "과정명",
+                "강사명": "강사명",
+                "만족도_평균점수": "만족도 점수(Max=5)",
             },
         )
         fig.update_layout(
@@ -168,8 +172,9 @@ if st.session_state.selected_file:
             df[column] = pd.to_numeric(df[column], errors="coerce")
 
     df["기관명"] = df["기관명"].str.replace(r"^\(.\)", "", regex=True)
-    df["강사"] = df.apply(find_teacher, axis=1)
-    df.insert(3, "강사", df.pop("강사"))
+    df["강사명"] = df.apply(find_teacher, axis=1)
+    df["만족도_평균점수"] = round(df["만족도_평균점수"] / 20, 1)
+    df.insert(3, "강사명", df.pop("강사명"))
 
 else:
     df = None
