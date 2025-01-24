@@ -173,7 +173,6 @@ def employment_average_chart(df, chart_key):
             "평균취업률": True,
             "기관명": True,
         },
-        title="기관별 평균 취업률",
         labels={"평균취업률": "평균 취업률(%)", "기관명": "기관 이름"},
     )
 
@@ -185,35 +184,42 @@ def employment_average_chart(df, chart_key):
 
 
 def occupation_chart(df):
-
-    it_system, ui_ux = st.columns(2)
+    st.subheader("직종별 평균 취업률")
+    it_system_tab, ui_ux_tab, big_data_tab, application_software_tab = st.tabs(
+        [
+            "IT 시스템 관리",
+            "UI/UX 엔지니어링",
+            "빅데이터 분석",
+            "응용 SW 엔지니어링",
+        ]
+    )
 
     # IT 시스템 관리
-    with it_system:
-        st.subheader("IT 시스템 관리 직종 차트")
+    with it_system_tab:
         it_system_management_df = df[df["직종"] == "IT시스템관리(20010301)"]
         employment_average_chart(
             it_system_management_df, chart_key="it_system_management"
         )
 
     # UI/UX 엔지니어링
-    with ui_ux:
-        st.subheader("UI/UX 엔지니어링 직종 차트")
+    with ui_ux_tab:
         ui_ux_engineering_df = df[df["직종"] == "UI/UX엔지니어링(20010207)"]
         employment_average_chart(ui_ux_engineering_df, chart_key="ui_ux_engineering")
 
     # 빅데이터 분석
-    st.subheader("빅데이터 분석 직종 차트")
-    big_data_analysis_df = df[df["직종"] == "빅데이터분석(20010105)"]
-    employment_average_chart(big_data_analysis_df, chart_key="big_data_analysis")
+    with big_data_tab:
+        big_data_analysis_df = df[df["직종"] == "빅데이터분석(20010105)"]
+        employment_average_chart(big_data_analysis_df, chart_key="big_data_analysis")
 
     # 응용 SW 엔지니어링
-    st.subheader("응용 SW 엔지니어링 직종 차트")
-    application_software_engineering_df = df[df["직종"] == "응용SW엔지니어링(20010202)"]
-    employment_average_chart(
-        application_software_engineering_df,
-        chart_key="application_software_engineering",
-    )
+    with application_software_tab:
+        application_software_engineering_df = df[
+            df["직종"] == "응용SW엔지니어링(20010202)"
+        ]
+        employment_average_chart(
+            application_software_engineering_df,
+            chart_key="application_software_engineering",
+        )
 
 
 def key_change(key):
