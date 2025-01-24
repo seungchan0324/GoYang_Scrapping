@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from collections import defaultdict
+from io import BytesIO
 import os
+import json
 
 custom_css = """
 <style>
@@ -25,6 +26,10 @@ if "selected_file" not in st.session_state:
     st.session_state.selected_file = None
 if "filters" not in st.session_state:
     st.session_state.filters = []
+
+
+with open("./json/과정_강사.json", "r", encoding="UTF-8") as f:
+    teacher_json = json.load(f)
 
 
 def select_file(file):
@@ -54,7 +59,7 @@ def create_chart(df):
 
         # 색상 데이터 추가
         df["색상"] = df["기관명"].apply(
-            lambda x: "솔데스크" if x == "(주)솔데스크" else "기타"
+            lambda x: "솔데스크" if x == "솔데스크" else "기타"
         )
 
         # Plotly 차트 생성
@@ -115,6 +120,28 @@ def create_average_dataframe(df):
     st.dataframe(average_employment_df, width=1000)
 
 
+def convert_df_to_excel(df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False, sheet_name="Sheet1")
+    output.seek(0)
+    return output
+
+
+def find_teacher(row):
+    if row["기관명"] == "솔데스크":
+        for title in teacher_json:
+            if (
+                title["과정명"] == row["과정명"]
+                and title["훈련시작일"] == row["개강일"]
+                and title["훈련종료일"] == row["종강일"]
+            ):
+                return title["메인강사"]
+        return "일치하는 과정이 없습니다."
+    else:
+        return "해당 정보 없음"
+
+
 directory = "files"
 csv_files = sorted([f for f in os.listdir(directory) if f.endswith(".csv")])
 columns_to_convert = [
@@ -140,6 +167,9 @@ if st.session_state.selected_file:
         if column in df.columns:
             df[column] = pd.to_numeric(df[column], errors="coerce")
 
+    df["기관명"] = df["기관명"].str.replace(r"^\(.\)", "", regex=True)
+    df["강사"] = df.apply(find_teacher, axis=1)
+    df.insert(3, "강사", df.pop("강사"))
 
 else:
     df = None
@@ -149,7 +179,6 @@ with st.sidebar:
     st.subheader("CSV 파일 선택")
     for csv_file in csv_files:
         st.button(csv_file, on_click=select_file, args=(csv_file,))
-
     if st.session_state.selected_file and df is not None:
         st.subheader("필터 추가 및 설정")
         if st.button("필터 추가"):
@@ -235,11 +264,12 @@ if st.session_state.selected_file and df is not None:
     if st.session_state.filters:
         filtered_df = df.copy()
         with download:
+            excel_data = convert_df_to_excel(df)
             st.download_button(
-                label="필터링 된 CSV 다운로드",
-                data=filtered_df.to_csv(index=False),
-                file_name=f"filtered_{st.session_state.selected_file}",
-                mime="text/csv",
+                label="필터링된 Excel 다운로드",
+                data=excel_data,
+                file_name=f"{st.session_state.selected_file.rsplit('.', 1)[0]}.xlsx",  # 원하는 파일 이름 설정
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
         for filter_item in st.session_state.filters:
             column = filter_item["column"]
@@ -284,11 +314,12 @@ if st.session_state.selected_file and df is not None:
             create_average_dataframe(filtered_df)
     else:
         with download:
+            excel_data = convert_df_to_excel(df)
             st.download_button(
-                label="CSV 다운로드",
-                data=df.to_csv(index=False),
-                file_name=st.session_state.selected_file,
-                mime="text/csv",
+                label="Excel 다운로드",
+                data=excel_data,
+                file_name=f"{st.session_state.selected_file.rsplit('.', 1)[0]}.xlsx",  # 원하는 파일 이름 설정
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
         display_df = df.copy()
         display_df.set_index("기관명", inplace=True)
