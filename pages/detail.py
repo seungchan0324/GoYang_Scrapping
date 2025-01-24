@@ -26,6 +26,10 @@ if "selected_file" not in st.session_state:
     st.session_state.selected_file = None
 if "filters" not in st.session_state:
     st.session_state.filters = []
+if "key" not in st.session_state:
+    st.session_state.key = False
+if "input_key" not in st.session_state:
+    st.session_state.input_key = None
 
 
 with open("./json/과정_강사.json", "r", encoding="UTF-8") as f:
@@ -89,7 +93,7 @@ def create_chart(df):
                 "기관명": "기관명",
                 "과정명": "과정명",
                 "강사명": "강사명",
-                "만족도_평균점수": "만족도 점수(Max=5)",
+                "만족도_평균점수": "만족도 점수",
             },
         )
         fig.update_layout(
@@ -102,6 +106,7 @@ def create_chart(df):
         st.plotly_chart(fig, use_container_width=True, config={"scrollZoom": False})
 
 
+# 평균 취업률 표 생성
 def create_average_dataframe(df):
     st.subheader("기업별 평균 취업률")
     average_employment_df = (
@@ -120,8 +125,10 @@ def create_average_dataframe(df):
     average_employment_df = average_employment_df.sort_values(
         by="평균취업률", ascending=False
     )
+    average_df = average_employment_df.copy()
     average_employment_df.set_index("기관명", inplace=True)
     st.dataframe(average_employment_df, width=1000)
+    return average_df
 
 
 def convert_df_to_excel(df):
@@ -146,6 +153,68 @@ def find_teacher(row):
         return "해당 정보 없음"
 
 
+def employment_average_chart(df, chart_key):
+    if df.empty:
+        st.warning("데이터가 없습니다.")
+        return
+
+    # 색상 컬럼 추가
+    df["색상"] = df["기관명"].apply(lambda x: "red" if x == "솔데스크" else "lightblue")
+
+    # 평균취업률 기준 내림차순 정렬
+    df = df.sort_values(by="평균취업률", ascending=False)
+
+    # 막대 색상을 데이터 순서대로 적용
+    fig = px.bar(
+        df,
+        x="기관명",
+        y="평균취업률",
+        hover_data={
+            "평균취업률": True,
+            "기관명": True,
+        },
+        title="기관별 평균 취업률",
+        labels={"평균취업률": "평균 취업률(%)", "기관명": "기관 이름"},
+    )
+
+    # Plotly의 update_traces를 사용해 색상 적용
+    fig.update_traces(marker_color=df["색상"])
+
+    # 차트 출력
+    st.plotly_chart(fig, key=chart_key)
+
+
+def occupation_chart(df):
+    # IT 시스템 관리
+    st.subheader("IT 시스템 관리 직종 차트")
+    it_system_management_df = df[df["직종"] == "IT시스템관리(20010301)"]
+    employment_average_chart(it_system_management_df, chart_key="it_system_management")
+
+    # UI/UX 엔지니어링
+    st.subheader("UI/UX 엔지니어링 직종 차트")
+    ui_ux_engineering_df = df[df["직종"] == "UI/UX엔지니어링(20010207)"]
+    employment_average_chart(ui_ux_engineering_df, chart_key="ui_ux_engineering")
+
+    # 빅데이터 분석
+    st.subheader("빅데이터 분석 직종 차트")
+    big_data_analysis_df = df[df["직종"] == "빅데이터분석(20010105)"]
+    employment_average_chart(big_data_analysis_df, chart_key="big_data_analysis")
+
+    # 응용 SW 엔지니어링
+    st.subheader("응용 SW 엔지니어링 직종 차트")
+    application_software_engineering_df = df[df["직종"] == "응용SW엔지니어링(20010202)"]
+    employment_average_chart(
+        application_software_engineering_df,
+        chart_key="application_software_engineering",
+    )
+
+
+def key_change(key):
+    if key == "$sol25":
+        st.session_state.key = True
+        st.rerun()
+
+
 directory = "files"
 csv_files = sorted([f for f in os.listdir(directory) if f.endswith(".csv")])
 columns_to_convert = [
@@ -159,75 +228,139 @@ columns_to_convert = [
     "만족도_평균점수",
     "만족도_응답자수",
 ]
-if st.session_state.selected_file:
-    file_path = os.path.join(directory, st.session_state.selected_file)
-    try:
-        df = pd.read_csv(file_path)
-    except Exception as e:
-        st.error(f"파일을 읽는 중 오류가 발생했습니다: {e}")
+
+if st.session_state.key == True:
+
+    if st.session_state.selected_file:
+        file_path = os.path.join(directory, st.session_state.selected_file)
+        try:
+            df = pd.read_csv(file_path)
+        except Exception as e:
+            st.error(f"파일을 읽는 중 오류가 발생했습니다: {e}")
+            df = None
+
+        for column in columns_to_convert:
+            if column in df.columns:
+                df[column] = pd.to_numeric(df[column], errors="coerce")
+
+        df["기관명"] = df["기관명"].str.replace(r"^\(.\)", "", regex=True)
+        df["강사명"] = df.apply(find_teacher, axis=1)
+        df["만족도_평균점수"] = round(df["만족도_평균점수"] / 20, 1)
+        df.insert(3, "강사명", df.pop("강사명"))
+
+    else:
         df = None
 
-    for column in columns_to_convert:
-        if column in df.columns:
-            df[column] = pd.to_numeric(df[column], errors="coerce")
+    with st.sidebar:
+        st.header("파일 및 필터 관리")
+        st.subheader("CSV 파일 선택")
+        for csv_file in csv_files:
+            st.button(csv_file, on_click=select_file, args=(csv_file,))
+        if st.session_state.selected_file and df is not None:
+            st.subheader("필터 추가 및 설정")
+            if st.button("필터 추가"):
+                add_filter()
 
-    df["기관명"] = df["기관명"].str.replace(r"^\(.\)", "", regex=True)
-    df["강사명"] = df.apply(find_teacher, axis=1)
-    df["만족도_평균점수"] = round(df["만족도_평균점수"] / 20, 1)
-    df.insert(3, "강사명", df.pop("강사명"))
+            for i, filter_item in enumerate(st.session_state.filters):
+                cols = st.columns([3, 3, 1])  # 열: 선택박스, 값 입력, 삭제 버튼
+                with cols[0]:
+                    st.session_state.filters[i]["column"] = st.selectbox(
+                        "열 선택",
+                        df.columns,
+                        key=f"filter-column-{i}",
+                        index=(
+                            0
+                            if not st.session_state.filters[i].get("column")
+                            else list(df.columns).index(
+                                st.session_state.filters[i]["column"]
+                            )
+                        ),
+                    )
 
-else:
-    df = None
-
-with st.sidebar:
-    st.header("파일 및 필터 관리")
-    st.subheader("CSV 파일 선택")
-    for csv_file in csv_files:
-        st.button(csv_file, on_click=select_file, args=(csv_file,))
-    if st.session_state.selected_file and df is not None:
-        st.subheader("필터 추가 및 설정")
-        if st.button("필터 추가"):
-            add_filter()
-
-        for i, filter_item in enumerate(st.session_state.filters):
-            cols = st.columns([3, 3, 1])  # 열: 선택박스, 값 입력, 삭제 버튼
-            with cols[0]:
-                st.session_state.filters[i]["column"] = st.selectbox(
-                    "열 선택",
-                    df.columns,
-                    key=f"filter-column-{i}",
-                    index=(
-                        0
-                        if not st.session_state.filters[i].get("column")
-                        else list(df.columns).index(
-                            st.session_state.filters[i]["column"]
+                selected_column = st.session_state.filters[i]["column"]
+                with cols[1]:
+                    if selected_column in ["개강일", "종강일"]:
+                        # 날짜 범위 필터
+                        st.session_state.filters[i]["start_date"] = st.date_input(
+                            "시작일",
+                            value=pd.to_datetime(
+                                st.session_state.filters[i].get(
+                                    "start_date", df[selected_column].min()
+                                )
+                            ),
+                            key=f"filter-start-date-{i}",
                         )
-                    ),
-                )
+                        st.session_state.filters[i]["end_date"] = st.date_input(
+                            "종료일",
+                            value=pd.to_datetime(
+                                st.session_state.filters[i].get(
+                                    "end_date", df[selected_column].max()
+                                )
+                            ),
+                            key=f"filter-end-date-{i}",
+                        )
+                    elif selected_column in [
+                        "모집인원",
+                        "수강신청인원",
+                        "수강확정인원",
+                        "수료인원",
+                        "평균 인원",
+                        "전회차 인원",
+                        "6개월후_취업률",
+                        "만족도_평균점수",
+                        "훈련시간",
+                    ]:
+                        # 숫자 범위 필터
+                        st.session_state.filters[i]["min"] = st.number_input(
+                            "최소값",
+                            value=st.session_state.filters[i].get("min", 0),
+                            key=f"filter-min-{i}",
+                        )
+                        st.session_state.filters[i]["max"] = st.number_input(
+                            "최대값",
+                            value=st.session_state.filters[i].get("max", 100),
+                            key=f"filter-max-{i}",
+                        )
+                    else:
+                        # 텍스트 필터
+                        st.session_state.filters[i]["value"] = st.text_input(
+                            "값 입력",
+                            st.session_state.filters[i].get("value", ""),
+                            key=f"filter-value-{i}",
+                        )
 
-            selected_column = st.session_state.filters[i]["column"]
-            with cols[1]:
-                if selected_column in ["개강일", "종강일"]:
-                    # 날짜 범위 필터
-                    st.session_state.filters[i]["start_date"] = st.date_input(
-                        "시작일",
-                        value=pd.to_datetime(
-                            st.session_state.filters[i].get(
-                                "start_date", df[selected_column].min()
-                            )
-                        ),
-                        key=f"filter-start-date-{i}",
+                with cols[2]:
+                    st.button(
+                        "삭제",
+                        key=f"remove-filter-{i}",
+                        on_click=remove_filter,
+                        args=(i,),
                     )
-                    st.session_state.filters[i]["end_date"] = st.date_input(
-                        "종료일",
-                        value=pd.to_datetime(
-                            st.session_state.filters[i].get(
-                                "end_date", df[selected_column].max()
-                            )
-                        ),
-                        key=f"filter-end-date-{i}",
-                    )
-                elif selected_column in [
+
+    if st.session_state.selected_file and df is not None:
+        st.header(f"선택된 파일: {st.session_state.selected_file}")
+        download, delete = st.columns([1, 1])
+        if st.session_state.filters:
+            filtered_df = df.copy()
+            with download:
+                excel_data = convert_df_to_excel(df)
+                st.download_button(
+                    label="필터링된 Excel 다운로드",
+                    data=excel_data,
+                    file_name=f"{st.session_state.selected_file.rsplit('.', 1)[0]}.xlsx",  # 원하는 파일 이름 설정
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            for filter_item in st.session_state.filters:
+                column = filter_item["column"]
+                if column in ["개강일", "종강일"]:
+                    # 날짜 필터 적용
+                    start_date = pd.to_datetime(filter_item["start_date"])
+                    end_date = pd.to_datetime(filter_item["end_date"])
+                    filtered_df = filtered_df[
+                        (pd.to_datetime(filtered_df[column]) >= start_date)
+                        & (pd.to_datetime(filtered_df[column]) <= end_date)
+                    ]
+                elif column in [
                     "모집인원",
                     "수강신청인원",
                     "수강확정인원",
@@ -238,104 +371,55 @@ with st.sidebar:
                     "만족도_평균점수",
                     "훈련시간",
                 ]:
-                    # 숫자 범위 필터
-                    st.session_state.filters[i]["min"] = st.number_input(
-                        "최소값",
-                        value=st.session_state.filters[i].get("min", 0),
-                        key=f"filter-min-{i}",
-                    )
-                    st.session_state.filters[i]["max"] = st.number_input(
-                        "최대값",
-                        value=st.session_state.filters[i].get("max", 100),
-                        key=f"filter-max-{i}",
-                    )
-                else:
-                    # 텍스트 필터
-                    st.session_state.filters[i]["value"] = st.text_input(
-                        "값 입력",
-                        st.session_state.filters[i].get("value", ""),
-                        key=f"filter-value-{i}",
-                    )
-
-            with cols[2]:
-                st.button(
-                    "삭제", key=f"remove-filter-{i}", on_click=remove_filter, args=(i,)
+                    # 숫자 필터 적용
+                    filtered_df = filtered_df[
+                        (filtered_df[column] >= filter_item["min"])
+                        & (filtered_df[column] <= filter_item["max"])
+                    ]
+                elif "value" in filter_item:
+                    # 텍스트 필터 적용
+                    filtered_df = filtered_df[
+                        filtered_df[column]
+                        .astype(str)
+                        .str.contains(filter_item["value"], na=False)
+                    ]
+            st.subheader("필터링 결과")
+            display_filtered_df = filtered_df.copy()
+            display_filtered_df.set_index("기관명", inplace=True)
+            st.dataframe(display_filtered_df)
+            create_chart(filtered_df)
+            _, av_df, _ = st.columns([1, 2, 1])
+            with av_df:
+                average_df = create_average_dataframe(filtered_df)
+        else:
+            with download:
+                excel_data = convert_df_to_excel(df)
+                st.download_button(
+                    label="Excel 다운로드",
+                    data=excel_data,
+                    file_name=f"{st.session_state.selected_file.rsplit('.', 1)[0]}.xlsx",  # 원하는 파일 이름 설정
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
+            display_df = df.copy()
+            display_df.set_index("기관명", inplace=True)
+            st.dataframe(display_df)
+            create_chart(df)
+            _, av_df, _ = st.columns([1, 3, 1])
+            with av_df:
+                average_df = create_average_dataframe(df)
+            occupation_chart(average_df)
 
+        with delete:
+            st.button("삭제", on_click=delete_file, args=(file_path,))
 
-if st.session_state.selected_file and df is not None:
-    st.header(f"선택된 파일: {st.session_state.selected_file}")
-    download, delete = st.columns([1, 1])
-    if st.session_state.filters:
-        filtered_df = df.copy()
-        with download:
-            excel_data = convert_df_to_excel(df)
-            st.download_button(
-                label="필터링된 Excel 다운로드",
-                data=excel_data,
-                file_name=f"{st.session_state.selected_file.rsplit('.', 1)[0]}.xlsx",  # 원하는 파일 이름 설정
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
-        for filter_item in st.session_state.filters:
-            column = filter_item["column"]
-            if column in ["개강일", "종강일"]:
-                # 날짜 필터 적용
-                start_date = pd.to_datetime(filter_item["start_date"])
-                end_date = pd.to_datetime(filter_item["end_date"])
-                filtered_df = filtered_df[
-                    (pd.to_datetime(filtered_df[column]) >= start_date)
-                    & (pd.to_datetime(filtered_df[column]) <= end_date)
-                ]
-            elif column in [
-                "모집인원",
-                "수강신청인원",
-                "수강확정인원",
-                "수료인원",
-                "평균 인원",
-                "전회차 인원",
-                "6개월후_취업률",
-                "만족도_평균점수",
-                "훈련시간",
-            ]:
-                # 숫자 필터 적용
-                filtered_df = filtered_df[
-                    (filtered_df[column] >= filter_item["min"])
-                    & (filtered_df[column] <= filter_item["max"])
-                ]
-            elif "value" in filter_item:
-                # 텍스트 필터 적용
-                filtered_df = filtered_df[
-                    filtered_df[column]
-                    .astype(str)
-                    .str.contains(filter_item["value"], na=False)
-                ]
-        st.subheader("필터링 결과")
-        display_filtered_df = filtered_df.copy()
-        display_filtered_df.set_index("기관명", inplace=True)
-        st.dataframe(display_filtered_df)
-        create_chart(filtered_df)
-        _, av_df, _ = st.columns([1, 2, 1])
-        with av_df:
-            create_average_dataframe(filtered_df)
     else:
-        with download:
-            excel_data = convert_df_to_excel(df)
-            st.download_button(
-                label="Excel 다운로드",
-                data=excel_data,
-                file_name=f"{st.session_state.selected_file.rsplit('.', 1)[0]}.xlsx",  # 원하는 파일 이름 설정
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
-        display_df = df.copy()
-        display_df.set_index("기관명", inplace=True)
-        st.dataframe(display_df)
-        create_chart(df)
-        _, av_df, _ = st.columns([1, 3, 1])
-        with av_df:
-            create_average_dataframe(df)
-
-    with delete:
-        st.button("삭제", on_click=delete_file, args=(file_path,))
-
+        st.info("왼쪽에서 CSV 파일을 선택해 주세요.")
 else:
-    st.info("왼쪽에서 CSV 파일을 선택해 주세요.")
+    with st.sidebar:
+        key = st.text_input(
+            "키를 입력하여 주십시오.",
+            value=st.session_state.input_key,
+        )
+        if key:
+            key_change(key)
+    st.warning("왼쪽에서 키를 입력하여 주십시오.")
