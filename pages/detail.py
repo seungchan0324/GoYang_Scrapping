@@ -185,15 +185,22 @@ def employment_average_chart(df, chart_key):
 
 
 def occupation_chart(df):
+
+    it_system, ui_ux = st.columns(2)
+
     # IT 시스템 관리
-    st.subheader("IT 시스템 관리 직종 차트")
-    it_system_management_df = df[df["직종"] == "IT시스템관리(20010301)"]
-    employment_average_chart(it_system_management_df, chart_key="it_system_management")
+    with it_system:
+        st.subheader("IT 시스템 관리 직종 차트")
+        it_system_management_df = df[df["직종"] == "IT시스템관리(20010301)"]
+        employment_average_chart(
+            it_system_management_df, chart_key="it_system_management"
+        )
 
     # UI/UX 엔지니어링
-    st.subheader("UI/UX 엔지니어링 직종 차트")
-    ui_ux_engineering_df = df[df["직종"] == "UI/UX엔지니어링(20010207)"]
-    employment_average_chart(ui_ux_engineering_df, chart_key="ui_ux_engineering")
+    with ui_ux:
+        st.subheader("UI/UX 엔지니어링 직종 차트")
+        ui_ux_engineering_df = df[df["직종"] == "UI/UX엔지니어링(20010207)"]
+        employment_average_chart(ui_ux_engineering_df, chart_key="ui_ux_engineering")
 
     # 빅데이터 분석
     st.subheader("빅데이터 분석 직종 차트")
