@@ -279,6 +279,7 @@ else:
         key = st.text_input(
             "키를 입력하여 주십시오.",
             value=st.session_state.input_key,
+            type="password",
         )
         if key:
             log = key_change(key)
