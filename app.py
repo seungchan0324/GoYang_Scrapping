@@ -84,7 +84,7 @@ def start_crawling(start_date, end_date, location_data, training_data, keyword):
         start_date, end_date, location_data, training_data, keyword, update_status
     )
     search_state()
-    st.experimental_rerun()
+    st.rerun()
 
 
 def toggle_checkbox(state_key, key_name, key_code):
