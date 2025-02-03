@@ -78,7 +78,7 @@ class Extractor_Goyong24:
             for title in titles:
                 link = title.find("a")["onclick"]
                 links.append(link)
-
+            print(f"{i}번째 url param값 추출 성공")
         return links
 
     def make_param(self, link):
