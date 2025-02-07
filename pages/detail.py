@@ -358,7 +358,7 @@ if st.session_state.key == True:
             with download:
                 excel_data = convert_df_to_excel(df)
                 st.download_button(
-                    label="필터링된 Excel 다운로드",
+                    label="📥 필터링된 Excel 다운로드",
                     data=excel_data,
                     file_name=f"{st.session_state.selected_file.rsplit('.', 1)[0]}.xlsx",  # 원하는 파일 이름 설정
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -404,11 +404,12 @@ if st.session_state.key == True:
             _, av_df, _ = st.columns([1, 2, 1])
             with av_df:
                 average_df = create_average_dataframe(filtered_df)
+            occupation_chart(average_df)
         else:
             with download:
                 excel_data = convert_df_to_excel(df)
                 st.download_button(
-                    label="Excel 다운로드",
+                    label="📥 Excel 다운로드",
                     data=excel_data,
                     file_name=f"{st.session_state.selected_file.rsplit('.', 1)[0]}.xlsx",  # 원하는 파일 이름 설정
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
