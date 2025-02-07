@@ -17,6 +17,11 @@ class Main:
             training_data=training_data,
             keyword=keyword,
         )
+        start_time = time.time()
         extractor.start_crawling(update_status)
         update_status("작업 완료!")
         time.sleep(1)
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print("코드 실행 시간: {:.6f} 초".format(elapsed_time))

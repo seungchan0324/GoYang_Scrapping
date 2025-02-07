@@ -49,7 +49,7 @@ class Extractor_Goyong24:
         self.save_to_file(file_name, data_set)
 
     def make_goyong_url(self, pages=1) -> str:
-        return f"https://www.work24.go.kr/hr/a/a/1100/trnnCrsInf.do?dghtSe=A&traingMthCd=A&tracseTme=16&endDate={self.end_date}&keyword1=&keyword2=&pageSize=10&orderBy=ASC&startDate_datepicker={self.start_date_picker}&currentTab=1&topMenuYn=&pop=&tracseId=AIG20230000412579&pageRow=100&totamtSuptYn=A&keywordTrngNm=&crseTracseSeNum=&keywordType=1&gb=&keyword={self.keyword}&kDgtlYn=&ncs=200103%7C전체%2C200102%7C전체%2C200101%7C전체&area={self.area}&orderKey=2&mberSe=&kdgLinkYn=&srchType=all_type&totTraingTime=A&crseTracseSe={self.training_data}&tranRegister=&mberId=&i2=A&pageId=2&programMenuIdentification=EBG020000000310&endDate_datepicker={self.end_date_picker}&monthGubun=&pageOrder=2ASC&pageIndex={pages}&bgrlInstYn=&startDate={self.start_date}&crseTracseSeKDT=&gvrnInstt=&selectNCSKeyword=&action=trnnCrsInfPost.do"
+        return f"https://www.work24.go.kr/hr/a/a/1100/trnnCrsInf.do?dghtSe=A&traingMthCd=A&tracseTme=16&endDate={self.end_date}&keyword1=&keyword2=&pageSize=10&orderBy=ASC&startDate_datepicker={self.start_date_picker}&currentTab=1&topMenuYn=&pop=&tracseId=AIG20230000412579&pageRow=100&totamtSuptYn=A&keywordTrngNm=&crseTracseSeNum=&keywordType=1&gb=&keyword={self.keyword}&kDgtlYn=&ncs=200103%7C전체%2C200102%7C전체%2C200101%7C전체&area={self.area}&orderKey=2&mberSe=&kdgLinkYn=&srchType=all_type&totTraingTime=Y&crseTracseSe={self.training_data}&tranRegister=&mberId=&i2=A&pageId=2&programMenuIdentification=EBG020000000310&endDate_datepicker={self.end_date_picker}&monthGubun=&pageOrder=2ASC&pageIndex={pages}&bgrlInstYn=&startDate={self.start_date}&crseTracseSeKDT=&gvrnInstt=&selectNCSKeyword=&action=trnnCrsInfPost.do"
 
     def fetch_soup(self, url) -> BeautifulSoup:
         response = requests.get(
@@ -394,3 +394,7 @@ class Extractor_Goyong24:
 
     def test_url(self, urls):
         self.training_people_crawling(urls)
+
+
+# 서울 전체 k-digital 240101 ~ 240131 1분07초
+# 서울 전체 k-digital 240101 ~ 241231 384.163393초
