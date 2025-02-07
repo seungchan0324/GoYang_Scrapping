@@ -2,4 +2,3 @@
 *.xlsx
 /relic
 /files/임시.csv
-비동기_api.py
