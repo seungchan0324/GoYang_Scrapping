@@ -133,7 +133,6 @@ class Use_API:
             ]
 
             tasks = []
-            update_status("140시간 미만 과정들을 찾아 제외시키고 있습니다...")
             for param_key, param_val in param_types:
                 url = normal_url + f"&{param_key}={param_val}"
                 async with session.get(url) as response:
