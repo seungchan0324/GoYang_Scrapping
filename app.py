@@ -51,15 +51,17 @@ if "key" not in st.session_state:
     st.session_state.key = False
 if "input_key" not in st.session_state:
     st.session_state.input_key = None
+st.session_state.selected_file = None
+
 
 # 클래스 초기화
 main = Main()
 file_name_selector = File_Name_Selector()
 
-with open("./json/location_type.json", "r", encoding="UTF-8") as f:
+with open("./json/location_api.json", "r", encoding="UTF-8") as f:
     location_json = json.load(f)
 
-with open("./json/training_type.json", "r", encoding="UTF-8") as f:
+with open("./json/training_api.json", "r", encoding="UTF-8") as f:
     training_json = json.load(f)
 
 
@@ -80,8 +82,10 @@ def start_crawling(start_date, end_date, location_data, training_data, keyword):
     )
     st.session_state.file_name = file_name
     file_name_display.info(f"{file_name}.csv")
-    main.start_crawling(
-        start_date, end_date, location_data, training_data, keyword, update_status
+    asyncio.run(
+        main.start_crawling(
+            start_date, end_date, location_data, training_data, keyword, update_status
+        )
     )
     search_state()
     st.rerun()
@@ -94,10 +98,10 @@ def toggle_checkbox(state_key, key_name, key_code):
         else:
             st.session_state[state_key] = [key_code]
     else:
-        if "A%7C전체" in st.session_state[state_key]:
-            st.session_state[state_key].remove("A%7C전체")
-        elif "11%7C서울+전체" in st.session_state[state_key]:
-            st.session_state[state_key].remove("11%7C서울+전체")
+        if "11" in st.session_state[state_key]:
+            st.session_state[state_key].remove("11")
+        elif "None" in st.session_state[state_key]:
+            st.session_state[state_key].remove("None")
 
         if key_code in st.session_state[state_key]:
             st.session_state[state_key].remove(key_code)
@@ -137,7 +141,9 @@ if st.session_state.key == True:
     if not st.session_state.search_started:
 
         with keyword_container:
-            st.session_state.keyword = st.text_input("검색어를 입력하시오.")
+            st.session_state.keyword = st.text_input(
+                "검색어를 입력하시오.", value=st.session_state.keyword
+            )
 
         with location_container:
 
@@ -249,10 +255,12 @@ if st.session_state.key == True:
                 len(st.session_state["train_checked"]) == 0
                 or len(st.session_state["location_checked"]) == 0
             )
-            location_data = sorted(st.session_state["location_checked"])
-            train_data = sorted(st.session_state["train_checked"])
-            st.session_state.param["location_data"] = "%2C".join(location_data)
-            st.session_state.param["training_data"] = "%2C".join(train_data)
+            st.session_state.param["location_data"] = sorted(
+                st.session_state["location_checked"]
+            )
+            st.session_state.param["training_data"] = sorted(
+                st.session_state["train_checked"]
+            )
             col1, col2 = st.columns([5, 1])
             with col1:
                 log_display = st.empty()
@@ -269,6 +277,7 @@ if st.session_state.key == True:
         training_checkbox_container.empty()
 
         keyword = st.session_state.keyword
+        st.session_state.keyword = ""
         start_date = st.session_state.param["start_date"]
         end_date = st.session_state.param["end_date"]
         location_data = st.session_state.param["location_data"]

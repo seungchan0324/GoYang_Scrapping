@@ -239,7 +239,6 @@ columns_to_convert = [
     "전회차 인원",
     "6개월후_취업률",
     "만족도_평균점수",
-    "만족도_응답자수",
 ]
 
 if st.session_state.key == True:
@@ -258,7 +257,6 @@ if st.session_state.key == True:
 
         df["기관명"] = df["기관명"].str.replace(r"^\(.\)", "", regex=True)
         df["강사명"] = df.apply(find_teacher, axis=1)
-        df["만족도_평균점수"] = round(df["만족도_평균점수"] / 20, 1)
         df.insert(3, "강사명", df.pop("강사명"))
 
     else:

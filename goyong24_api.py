@@ -8,15 +8,15 @@ import aiohttp
 import asyncio
 import xml.etree.ElementTree as ET
 import datetime as dt
+from file_name import File_Name_Selector
 
 
 class Use_API:
 
-    with open("./json/location_api.json", "r", encoding="utf-8") as f:
-        location_data = json.load(f)
+    # with open("./json/location_api.json", "r", encoding="utf-8") as f:
+    #     location_data = json.load(f)
 
-    # key와 value 위치 바뀐 dict
-    # reverse_data = {value: key for key, value in location_data.items()}
+    file_name_selector = File_Name_Selector()
 
     # apikey
     authKey = "9aa1c3c5-e44f-4ccc-a119-e0af76286b28"
@@ -39,28 +39,37 @@ class Use_API:
         "D": "수료자 없음",
     }
 
+    # 지역, 직종, 훈련유형, 개강일, 종강일, 훈련과정명, 훈련기관명
     def __init__(
         self,
-        # srchTraAreals,
-        # srchNcsls,
-        # crseTracseSels,
         srchTraStDt,
         srchTraEndDt,
+        srchTraAreals,
+        srchNcsls,
+        crseTracseSels,
+        keyword,
     ):
-        # 11만 쓰면 서울
-        self.srchTraAreals = ["11"]
-        # NCS 직종 대분류, 중분류, 소분류
-        self.srchNcsls = ["200101", "200102", "200103"]
-        # self.srchNcsls = srchNcsls
-        # 훈련유형 K-digital 여긴 ,로 여러개 가능
-        self.crseTracseSels = ["C0104"]
-        # self.crseTracseSels = crseTracseSels
-
         # 훈련시작일 From, 훈련시작일 To
-        self.srchTraStDt = srchTraStDt.replace("-", "")
+        self.srchTraStDt = str(srchTraStDt).replace("-", "")
         self.startDate = srchTraStDt
-        self.srchTraEndDt = srchTraEndDt.replace("-", "")
+        self.srchTraEndDt = str(srchTraEndDt).replace("-", "")
         self.endDate = srchTraEndDt
+
+        # 11만 쓰면 서울
+        self.srchTraAreals = srchTraAreals
+        # NCS 직종 대분류, 중분류, 소분류
+        self.srchNcsls = srchNcsls
+        # 훈련유형 K-digital 여긴 ,로 여러개 가능
+        self.crseTracseSels = crseTracseSels
+        if "None" in crseTracseSels:
+            self.crseTracseSelstr = ""
+        else:
+            self.crseTracseSelstr = ",".join(crseTracseSels)
+
+        print(srchTraAreals, self.crseTracseSelstr)
+
+        # 검색 keyword
+        self.keyword = keyword if keyword else ""
 
     # 도구1 날짜 문자열을 date 객체로 변환
     def dt_formatter(self, str_date):
@@ -69,20 +78,21 @@ class Use_API:
     # 도구2 개강일이 지정 날짜 범위 내에 있는지 확인
     def start_date_cutting(self, start_date):
         start_date = self.dt_formatter(start_date)
-        if not (
-            self.dt_formatter(self.startDate)
-            <= start_date
-            <= self.dt_formatter(self.endDate)
-        ):
+        if not (self.startDate <= start_date <= self.endDate):
             return True
         return False
 
     # 1. 추가 정보 API 호출 (140시간 이상 체크)
-    async def more_than_140_hours_async(self, session, srchTrprId, trainstCstId):
+    async def more_than_140_hours_async(
+        self,
+        session,
+        srchTrprId,
+        trainstCstId,
+    ):
         url = (
-            f"https://www.work24.go.kr/cm/openApi/call/hr/callOpenApiSvcInfo310L02.do?"
-            f"authKey={self.authKey}&returnType=JSON&outType=2&"
-            f"srchTrprId={srchTrprId}&srchTrprDegr=1&srchTorgId={trainstCstId}"
+            f"https://www.work24.go.kr/cm/openApi/call/hr/callOpenApiSvcInfo310L02.do"
+            f"?authKey={self.authKey}&returnType=JSON&outType=2"
+            f"&srchTrprId={srchTrprId}&srchTrprDegr=1&srchTorgId={trainstCstId}"
         )
         async with session.get(url) as response:
             data = await response.json()
@@ -95,34 +105,46 @@ class Use_API:
 
     # 2. 목록 API 호출 (페이지 단위) 및 배치화
     async def search_procedure_list_async(
-        self, session, srchTraArea, srchNcs, crseTracseSe
+        self,
+        session,
+        srchTraArea,
+        srchNcs,
+        crseTracseSe,
+        update_status,
     ):
         # 초기화
         pageNum = 1
 
         srchList = []
         while True:
-            url = (
-                f"https://www.work24.go.kr/cm/openApi/call/hr/callOpenApiSvcInfo310L01.do?"
-                f"authKey={self.authKey}&returnType={self.returnType}&outType={self.outType}"
+            normal_url = (
+                f"https://www.work24.go.kr/cm/openApi/call/hr/callOpenApiSvcInfo310L01.do"
+                f"?authKey={self.authKey}&returnType={self.returnType}&outType={self.outType}"
                 f"&pageNum={pageNum}&pageSize={self.pageSize}"
                 f"&srchTraStDt={self.srchTraStDt}&srchTraEndDt={self.srchTraEndDt}"
                 f"&srchTraArea1={srchTraArea}&srchNcs1={srchNcs}&crseTracseSe={crseTracseSe}"
                 f"&sort={self.sort}&sortCol={self.sortCol}"
             )
 
-            async with session.get(url) as response:
-                data = await response.json()
+            # keyword에 대해 과정명과 기관명을 한번씩 검색 후 그걸 task에 넣은 후 한번에 동작하기 위함
+            param_types = [
+                ("srchTraProcessNm", self.keyword),  # 과정명 검색
+                ("srchTraOrganNm", self.keyword),  # 기관명 검색
+            ]
 
             tasks = []
-            # 훈련과정ID = TRPR_ID, 기관명 = SUB_TITLE, 과정명 = TITLE, 주소 = ADDRESS
-            for srch in data.get("srchList", []):
-                # more_than_140_hours_async 140시간 이상 넘으면 True 아니면 False
-                tasks.append(
-                    self.more_than_140_hours_async(
-                        session, srch["trprId"], srch["trainstCstId"]
+            update_status("140시간 미만 과정들을 찾아 제외시키고 있습니다...")
+            for param_key, param_val in param_types:
+                url = normal_url + f"&{param_key}={param_val}"
+                async with session.get(url) as response:
+                    data = await response.json()
+
+                for srch in data.get("srchList", []):
+                    tasks.append(
+                        self.more_than_140_hours_async(
+                            session, srch["trprId"], srch["trainstCstId"]
+                        )
                     )
-                )
 
             results = await asyncio.gather(*tasks)
 
@@ -143,6 +165,7 @@ class Use_API:
                 except Exception:
                     satisfaction_score = 0
 
+                # 훈련과정ID = TRPR_ID, 기관명 = SUB_TITLE, 과정명 = TITLE, 주소 = ADDRESS
                 srchList.append(
                     {
                         "주소": srch["address"],
@@ -152,7 +175,6 @@ class Use_API:
                         "훈련구분": info["trprTargetNm"],
                         "직종": info["ncsNm"],
                         "만족도점수": satisfaction_score,
-                        "훈련과정 순차": srch["contents"],
                     }
                 )
 
@@ -160,15 +182,13 @@ class Use_API:
                 pageNum += 1
             else:
                 break
-
         return srchList
 
     # 3. 상세 정보 API 호출 (개별 교육과정)
     async def fetch_detail_async(self, session, procedure_list):
-        print(procedure_list["훈련과정ID"], procedure_list["과정명"])
         url = (
-            f"https://www.work24.go.kr/cm/openApi/call/hr/callOpenApiSvcInfo310L03.do?"
-            f"authKey={self.authKey}&returnType=XML&outType=2"
+            f"https://www.work24.go.kr/cm/openApi/call/hr/callOpenApiSvcInfo310L03.do"
+            f"?authKey={self.authKey}&returnType=XML&outType=2"
             f"&srchTrprId={procedure_list['훈련과정ID']}"
         )
         async with session.get(url) as response:
@@ -188,19 +208,20 @@ class Use_API:
                 employment_rate_6mon = scn_list.find("eiEmplRate6").text
                 employment_rate_6mon_people = scn_list.find("eiEmplCnt6").text
                 # 수료인원과 취업률에 반영되는 인원이 달라 일단 취업률에 반영되는 인원으로 수료인원 지정함
-                number_of_graduates = round(
-                    float(employment_rate_6mon_people)
-                    / float(employment_rate_6mon)
-                    * 100
-                )
+                if float(employment_rate_6mon) != 0:
+                    number_of_graduates = round(
+                        float(employment_rate_6mon_people)
+                        / float(employment_rate_6mon)
+                        * 100
+                    )
+                else:
+                    number_of_graduates = 0
 
                 details.append(
                     {
                         "기관명": procedure_list["기관명"],
                         "과정명": procedure_list["과정명"],
                         "회차": scn_list.find("trprDegr").text,
-                        "모집인원": scn_list.find("totFxnum").text,
-                        "수강신청인원": scn_list.find("totTrpCnt").text,
                         "수강확정인원": scn_list.find("totParMks").text,
                         "수료인원": number_of_graduates,
                         "6개월후_취업률": round(
@@ -208,12 +229,15 @@ class Use_API:
                             + float(scn_list.find("hrdEmplRate6").text),
                             2,
                         ),
+                        "직종": procedure_list["직종"],
+                        "과정상황": "과정 종료",
+                        "수강신청인원": scn_list.find("totTrpCnt").text,
+                        "모집인원": scn_list.find("totFxnum").text,
+                        "훈련유형": procedure_list["훈련구분"],
                         "개강일": scn_list.find("trStaDt").text,
                         "종강일": scn_list.find("trEndDt").text,
                         "주소": procedure_list["주소"],
-                        "훈련구분": procedure_list["훈련구분"],
-                        "직종": procedure_list["직종"],
-                        "만족도점수": procedure_list["만족도점수"],
+                        "만족도_평균점수": procedure_list["만족도점수"],
                     }
                 )
             else:
@@ -222,8 +246,6 @@ class Use_API:
                         "기관명": procedure_list["기관명"],
                         "과정명": procedure_list["과정명"],
                         "회차": scn_list.find("trprDegr").text,
-                        "모집인원": scn_list.find("totFxnum").text,
-                        "수강신청인원": scn_list.find("totTrpCnt").text,
                         "수강확정인원": (
                             scn_list.find("totParMks").text
                             if scn_list.find("totParMks") is not None
@@ -233,6 +255,11 @@ class Use_API:
                         "6개월후_취업률": self.status_dict[
                             scn_list.find("eiEmplRate6").text
                         ],
+                        "직종": procedure_list["직종"],
+                        "과정상황": self.status_dict[scn_list.find("eiEmplRate6").text],
+                        "수강신청인원": scn_list.find("totTrpCnt").text,
+                        "모집인원": scn_list.find("totFxnum").text,
+                        "훈련유형": procedure_list["훈련구분"],
                         "개강일": (
                             scn_list.find("trStaDt").text
                             if scn_list.find("trStaDt") is not None
@@ -244,9 +271,7 @@ class Use_API:
                             else "해당 정보 없음"
                         ),
                         "주소": procedure_list["주소"],
-                        "훈련구분": procedure_list["훈련구분"],
-                        "직종": procedure_list["직종"],
-                        "만족도점수": procedure_list["만족도점수"],
+                        "만족도_평균점수": procedure_list["만족도점수"],
                     }
                 )
         return details
@@ -261,7 +286,20 @@ class Use_API:
         data_set = []
         for details in results:
             data_set.extend(details)
-        self.save_to_file("임시", data_set)
+
+        data_set = sorted(
+            data_set, key=lambda x: (x["기관명"], x["과정명"], int(x["회차"]))
+        )
+
+        # 파일명
+        file_name = self.file_name_selector.select(
+            self.srchTraAreals,
+            self.crseTracseSels,
+            self.startDate,
+            self.endDate,
+            self.keyword,
+        )
+        self.save_to_file(file_name, data_set)
 
     # 5. CSV 파일 저장 (동기)
     def save_to_file(self, file_name, data_set):
@@ -272,17 +310,18 @@ class Use_API:
                     "기관명",
                     "과정명",
                     "회차",
-                    "모집인원",
-                    "수강신청인원",
                     "수강확정인원",
                     "수료인원",
                     "6개월후_취업률",
+                    "직종",
+                    "과정상황",
+                    "수강신청인원",
+                    "모집인원",
+                    "훈련유형",
                     "개강일",
                     "종강일",
                     "주소",
-                    "훈련구분",
-                    "직종",
-                    "만족도점수",
+                    "만족도_평균점수",
                 ]
             )
 
@@ -290,18 +329,22 @@ class Use_API:
                 writer.writerow(data.values())
 
     # 6. 전체 데이터 수집 비동기 프로세스
-    async def start_data_collection_async(self):
+    async def start_data_collection_async(self, update_status):
+        update_status("api 통신 시작...")
         # requests여러번 생성되는거 방지하는 역할
         async with aiohttp.ClientSession() as session:
             tasks = []
             for srchTraArea in self.srchTraAreals:
                 for srchNcs in self.srchNcsls:
-                    for crseTracseSe in self.crseTracseSels:
-                        tasks.append(
-                            self.search_procedure_list_async(
-                                session, srchTraArea, srchNcs, crseTracseSe
-                            )
+                    tasks.append(
+                        self.search_procedure_list_async(
+                            session,
+                            srchTraArea,
+                            srchNcs,
+                            self.crseTracseSelstr,
+                            update_status,
                         )
+                    )
             results = await asyncio.gather(*tasks)
             srchList = []
             for lst in results:
@@ -316,13 +359,20 @@ class Use_API:
                     ),
                 )
             )
-
+            update_status(f"총 과정 수 {len(procedure_lists)}개를 저장하고 있습니다...")
             await self.detail_procedure_data_collection_async(session, procedure_lists)
 
 
 async def main():
     start_time = time.time()
-    api = Use_API("2024-01-01", "2024-12-31")
+    api = Use_API(
+        "2024-01-01",
+        "2024-01-31",
+        ["11"],
+        ["200101", "200102", "200103"],
+        ["C0104"],
+        "솔데스크",
+    )
     await api.start_data_collection_async()
     end_time = time.time()
     print("코드 실행 시간: {:.6f}초".format(end_time - start_time))

@@ -1,19 +1,74 @@
-{
-  "C0061": "국민내일배움카드(일반)",
-  "C0061S": "국민내일배움카드(주 훈련대상 : 구직자)",
-  "C0061I": "국민내일배움카드(주 훈련대상 : 재직자)",
-  "C0054": "국가기간전략산업직종",
-  "C0055C": "과정평가형훈련",
-  "C0054G": "기업맞춤형훈련",
-  "C0054Y": "스마트혼합훈련",
-  "C0054S": "일반고특화훈련",
-  "C0054I": "4차산업혁명인력양성훈련",
-  "C0104": "K-디지털 트레이닝",
-  "C0105": "K-디지털 기초역량훈련",
-  "C0103": "플랫폼종사자훈련",
-  "C0102": "산업구조변화대응",
-  "C0106": "중장년새출발카운슬링",
-  "C0055": "실업자 원격훈련",
-  "C0031": "근로자 원격훈련",
-  "C0031F": "근로자 외국어훈련"
-}
+[
+  {
+    "training_type": "훈련전체",
+    "training_code": "None"
+  },
+  {
+    "training_type": "국민내일배움카드(일반)",
+    "training_code": "C0061"
+  },
+  {
+    "training_type": "국민내일배움카드(구직자)",
+    "training_code": "C0061S"
+  },
+  {
+    "training_type": "국민내일배움카드(재직자)",
+    "training_code": "C0061I"
+  },
+  {
+    "training_type": "국가기간전략산업직종",
+    "training_code": "C0054"
+  },
+  {
+    "training_type": "과정평가형훈련",
+    "training_code": "C0055C"
+  },
+  {
+    "training_type": "기업맞춤형훈련",
+    "training_code": "C0054G"
+  },
+  {
+    "training_type": "스마트혼합훈련",
+    "training_code": "C0054Y"
+  },
+  {
+    "training_type": "일반고특화훈련",
+    "training_code": "C0054S"
+  },
+  {
+    "training_type": "4차산업혁명인력양성훈련",
+    "training_code": "C0054I"
+  },
+  {
+    "training_type": "K-디지털 트레이닝",
+    "training_code": "C0104"
+  },
+  {
+    "training_type": "K-디지털 기초역량훈련",
+    "training_code": "C0105"
+  },
+  {
+    "training_type": "플랫폼종사자훈련",
+    "training_code": "C0103"
+  },
+  {
+    "training_type": "산업구조변화대응",
+    "training_code": "C0102"
+  },
+  {
+    "training_type": "중장년새출발카운슬링",
+    "training_code": "C0106"
+  },
+  {
+    "training_type": "실업자 원격훈련",
+    "training_code": "C0055"
+  },
+  {
+    "training_type": "근로자 원격훈련",
+    "training_code": "C0031"
+  },
+  {
+    "training_type": "근로자 외국어훈련",
+    "training_code": "C0031F"
+  }
+]

@@ -1,4 +1,4 @@
-from goyong24 import Extractor_Goyong24
+from goyong24_api import Use_API
 import time
 
 
@@ -7,18 +7,25 @@ class Main:
     def __init__(self):
         pass
 
-    def start_crawling(
-        self, start_date, end_date, location_data, training_data, keyword, update_status
+    async def start_crawling(
+        self,
+        start_date,
+        end_date,
+        location_data,
+        training_data,
+        keyword,
+        update_status,
     ):
-        extractor = Extractor_Goyong24(
+        api = Use_API(
             start_date,
             end_date,
-            area=location_data,
-            training_data=training_data,
-            keyword=keyword,
+            location_data,
+            ["200101", "200102", "200103"],
+            training_data,
+            keyword,
         )
         start_time = time.time()
-        extractor.start_crawling(update_status)
+        await api.start_data_collection_async(update_status)
         update_status("작업 완료!")
         time.sleep(1)
 

@@ -2,3 +2,4 @@
 *.xlsx
 /relic
 /files/임시.csv
+/test.py

@@ -7,7 +7,7 @@ if "key" not in st.session_state:
     st.session_state.key = False
 if "input_key" not in st.session_state:
     st.session_state.input_key = None
-
+st.session_state.selected_file = None
 st.set_page_config(page_title="SolTrack:Analyze", page_icon="📊", layout="wide")
 
 st.title("분석 페이지")
@@ -51,7 +51,7 @@ if st.session_state.key == True:
         df_sorted["강조"] = df_sorted["기관명"].eq("솔데스크")
 
         직종_목록 = df_sorted["직종"].unique()
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3 = st.columns([0.9, 0.77, 1])
 
         for i, 직종 in enumerate(직종_목록):
             subset = df_sorted[df_sorted["직종"] == 직종].drop(columns=["직종"])
