@@ -89,6 +89,7 @@ class Use_API:
         srchTrprId,
         trainstCstId,
     ):
+        update_status("more_than_140")
         url = (
             f"https://www.work24.go.kr/cm/openApi/call/hr/callOpenApiSvcInfo310L02.do"
             f"?authKey={self.authKey}&returnType=JSON&outType=2"
@@ -110,7 +111,6 @@ class Use_API:
         srchTraArea,
         srchNcs,
         crseTracseSe,
-        update_status,
     ):
         # 초기화
         pageNum = 1
@@ -341,7 +341,6 @@ class Use_API:
                             srchTraArea,
                             srchNcs,
                             self.crseTracseSelstr,
-                            update_status,
                         )
                     )
             results = await asyncio.gather(*tasks)
@@ -365,14 +364,14 @@ class Use_API:
 async def main():
     start_time = time.time()
     api = Use_API(
-        "2024-01-01",
-        "2024-01-31",
-        ["11"],
+        dt.datetime.strptime("2024-06-01", "%Y-%m-%d").date(),
+        dt.datetime.strptime("2025-02-09", "%Y-%m-%d").date(),
+        ["11110"],
         ["200101", "200102", "200103"],
-        ["C0104"],
+        ["None"],
         "솔데스크",
     )
-    await api.start_data_collection_async()
+    await api.start_data_collection_async(print)
     end_time = time.time()
     print("코드 실행 시간: {:.6f}초".format(end_time - start_time))
 

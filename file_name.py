@@ -28,6 +28,8 @@ class File_Name_Selector:
         area_name = ",".join(self.location_data[area] for area in areas)
 
         training_name = ",".join(self.training_data[training] for training in trainings)
+        if training_name == "":
+            training_name = "훈련전체"
 
         st_date_str = str(start_date_picker)
         ed_date_str = str(end_date_picker)
