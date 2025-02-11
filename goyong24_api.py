@@ -89,7 +89,6 @@ class Use_API:
         srchTrprId,
         trainstCstId,
     ):
-        update_status("more_than_140")
         url = (
             f"https://www.work24.go.kr/cm/openApi/call/hr/callOpenApiSvcInfo310L02.do"
             f"?authKey={self.authKey}&returnType=JSON&outType=2"
