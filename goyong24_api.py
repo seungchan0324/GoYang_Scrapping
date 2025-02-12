@@ -66,8 +66,6 @@ class Use_API:
         else:
             self.crseTracseSelstr = ",".join(crseTracseSels)
 
-        print(srchTraAreals, self.crseTracseSelstr)
-
         # 검색 keyword
         self.keyword = keyword if keyword else ""
 
@@ -214,7 +212,9 @@ class Use_API:
                     )
                 else:
                     number_of_graduates = 0
-
+                print(
+                    f"program_title:{procedure_list['과정명']}, program_id:{procedure_list['훈련과정ID']}, program_round:{scn_list.find('trprDegr').text}, 훈련시작일: {scn_list.find('trStaDt').text}, 훈련종료일: {scn_list.find('trEndDt').text}"
+                )
                 details.append(
                     {
                         "기관명": procedure_list["기관명"],
@@ -363,8 +363,8 @@ class Use_API:
 async def main():
     start_time = time.time()
     api = Use_API(
-        dt.datetime.strptime("2024-06-01", "%Y-%m-%d").date(),
-        dt.datetime.strptime("2025-02-09", "%Y-%m-%d").date(),
+        dt.datetime.strptime("2021-01-01", "%Y-%m-%d").date(),
+        dt.datetime.strptime("2025-02-12", "%Y-%m-%d").date(),
         ["11110"],
         ["200101", "200102", "200103"],
         ["None"],

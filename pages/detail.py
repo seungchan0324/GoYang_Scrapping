@@ -153,6 +153,7 @@ def find_teacher(row):
         return "해당 정보 없음"
 
 
+# 취업률 기준 차트
 def employment_average_chart(df, chart_key):
     if df.empty:
         st.warning("데이터가 없습니다.")
@@ -196,26 +197,24 @@ def occupation_chart(df):
 
     # IT 시스템 관리
     with it_system_tab:
-        it_system_management_df = df[df["직종"] == "IT시스템관리(20010301)"]
+        it_system_management_df = df[df["직종"] == "IT시스템관리"]
         employment_average_chart(
             it_system_management_df, chart_key="it_system_management"
         )
 
     # UI/UX 엔지니어링
     with ui_ux_tab:
-        ui_ux_engineering_df = df[df["직종"] == "UI/UX엔지니어링(20010207)"]
+        ui_ux_engineering_df = df[df["직종"] == "UI/UX엔지니어링"]
         employment_average_chart(ui_ux_engineering_df, chart_key="ui_ux_engineering")
 
     # 빅데이터 분석
     with big_data_tab:
-        big_data_analysis_df = df[df["직종"] == "빅데이터분석(20010105)"]
+        big_data_analysis_df = df[df["직종"] == "빅데이터분석"]
         employment_average_chart(big_data_analysis_df, chart_key="big_data_analysis")
 
     # 응용 SW 엔지니어링
     with application_software_tab:
-        application_software_engineering_df = df[
-            df["직종"] == "응용SW엔지니어링(20010202)"
-        ]
+        application_software_engineering_df = df[df["직종"] == "응용SW엔지니어링"]
         employment_average_chart(
             application_software_engineering_df,
             chart_key="application_software_engineering",
