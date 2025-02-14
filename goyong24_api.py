@@ -135,7 +135,11 @@ class Use_API:
                 async with session.get(url) as response:
                     data = await response.json()
 
-                for srch in data.get("srchList", []):
+                unique_dicts = list(
+                    {d["title"]: d for d in data.get("srchList", [])}.values()
+                )
+
+                for srch in unique_dicts:
                     tasks.append(
                         self.more_than_140_hours_async(
                             session, srch["trprId"], srch["trainstCstId"]

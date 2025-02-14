@@ -184,6 +184,7 @@ def employment_average_chart(df, chart_key):
     st.plotly_chart(fig, key=chart_key)
 
 
+# 직종별 평균 취업률 그래프
 def occupation_chart(df):
     st.subheader("직종별 평균 취업률")
     it_system_tab, ui_ux_tab, big_data_tab, application_software_tab = st.tabs(
