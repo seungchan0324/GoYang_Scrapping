@@ -67,7 +67,10 @@ class Use_API:
             self.crseTracseSelstr = ",".join(crseTracseSels)
 
         # 검색 keyword
-        self.keyword = keyword if keyword else ""
+        if keyword:
+            self.keyword = keyword.replace("&", "")
+        else:
+            self.keyword = ""
 
     # 도구1 날짜 문자열을 date 객체로 변환
     def dt_formatter(self, str_date):
@@ -111,8 +114,9 @@ class Use_API:
     ):
         # 초기화
         pageNum = 1
-
-        srchList = []
+        all_tasks = []
+        all_srches = []
+        i = 0
         while True:
             normal_url = (
                 f"https://www.work24.go.kr/cm/openApi/call/hr/callOpenApiSvcInfo310L01.do"
@@ -123,65 +127,71 @@ class Use_API:
                 f"&sort={self.sort}&sortCol={self.sortCol}"
             )
 
+            page_has_results = False
+
             # keyword에 대해 과정명과 기관명을 한번씩 검색 후 그걸 task에 넣은 후 한번에 동작하기 위함
             param_types = [
                 ("srchTraProcessNm", self.keyword),  # 과정명 검색
                 ("srchTraOrganNm", self.keyword),  # 기관명 검색
             ]
 
-            tasks = []
             for param_key, param_val in param_types:
                 url = normal_url + f"&{param_key}={param_val}"
                 async with session.get(url) as response:
                     data = await response.json()
 
-                unique_dicts = list(
+                unique_srches = list(
                     {d["title"]: d for d in data.get("srchList", [])}.values()
                 )
 
-                for srch in unique_dicts:
-                    tasks.append(
-                        self.more_than_140_hours_async(
-                            session, srch["trprId"], srch["trainstCstId"]
-                        )
+                if unique_srches:
+                    page_has_results = True
+
+                for srch in unique_srches:
+                    task = self.more_than_140_hours_async(
+                        session, srch["trprId"], srch["trainstCstId"]
                     )
+                    all_srches.append(srch)
+                    all_tasks.append(task)
 
-            results = await asyncio.gather(*tasks)
-
-            # 배치화: 각 검색 결과에 대해 동시에 140시간 이상 여부를 체크
-            for srch, (flag, info) in zip(data.get("srchList", []), results):
-                if not flag:
-                    continue
-
-                try:
-                    satisfaction_score = round(
-                        (
-                            (float(srch["stdgScor"]) / 200)
-                            if len(srch["stdgScor"]) > 2
-                            else float(srch["stdgScor"]) / 20
-                        ),
-                        2,
-                    )
-                except Exception:
-                    satisfaction_score = 0
-
-                # 훈련과정ID = TRPR_ID, 기관명 = SUB_TITLE, 과정명 = TITLE, 주소 = ADDRESS
-                srchList.append(
-                    {
-                        "주소": srch["address"],
-                        "과정명": srch["title"],
-                        "기관명": srch["subTitle"],
-                        "훈련과정ID": srch["trprId"],
-                        "훈련구분": info["trprTargetNm"],
-                        "직종": info["ncsNm"],
-                        "만족도점수": satisfaction_score,
-                    }
-                )
-
-            if data.get("scn_cnt", 0) > 100 and data.get("scn_cnt", 0) / pageNum > 100:
-                pageNum += 1
-            else:
+            if not page_has_results or len(unique_srches) < int(self.pageSize):
                 break
+            else:
+                pageNum += 1
+
+        results = await asyncio.gather(*all_tasks)
+
+        # 배치화: 각 검색 결과에 대해 동시에 140시간 이상 여부를 체크
+        srchList = []
+        for srch, (flag, info) in zip(all_srches, results):
+            if not flag:
+                continue
+
+            try:
+                satisfaction_score = round(
+                    (
+                        (float(srch["stdgScor"]) / 200)
+                        if len(srch["stdgScor"]) > 2
+                        else float(srch["stdgScor"]) / 20
+                    ),
+                    2,
+                )
+            except Exception:
+                satisfaction_score = 0
+
+            # 훈련과정ID = TRPR_ID, 기관명 = SUB_TITLE, 과정명 = TITLE, 주소 = ADDRESS
+            srchList.append(
+                {
+                    "주소": srch["address"],
+                    "과정명": srch["title"],
+                    "기관명": srch["subTitle"],
+                    "훈련과정ID": srch["trprId"],
+                    "훈련구분": info["trprTargetNm"],
+                    "직종": info["ncsNm"],
+                    "만족도점수": satisfaction_score,
+                }
+            )
+
         return srchList
 
     # 3. 상세 정보 API 호출 (개별 교육과정)
@@ -367,12 +377,12 @@ class Use_API:
 async def main():
     start_time = time.time()
     api = Use_API(
-        dt.datetime.strptime("2021-01-01", "%Y-%m-%d").date(),
-        dt.datetime.strptime("2025-02-12", "%Y-%m-%d").date(),
-        ["11110"],
+        dt.datetime.strptime("2022-01-01", "%Y-%m-%d").date(),
+        dt.datetime.strptime("2025-02-18", "%Y-%m-%d").date(),
+        ["11"],
         ["200101", "200102", "200103"],
         ["None"],
-        "솔데스크",
+        "자바파이썬빅데이터",
     )
     await api.start_data_collection_async(print)
     end_time = time.time()
