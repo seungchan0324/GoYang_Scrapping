@@ -107,27 +107,45 @@ def create_chart(df):
 
 
 # 평균 취업률 표 생성
-def create_average_dataframe(df):
-    st.subheader("기업별 평균 취업률")
-    average_employment_df = (
-        df.groupby(["기관명", "직종"])
-        .agg(
-            평균취업률=("6개월후_취업률", "mean"),  # 평균 취업률
-            평균수료인원=("수료인원", "mean"),
-            과정_진행_횟수=("회차", "count"),  # 회차 수 계산
+def create_average_dataframe(df: pd.DataFrame):
+    st.subheader("기업별 평균 데이터")
+    company_averag_employment, company_average_people = st.tabs(["취업률", "모집율"])
+    with company_averag_employment:
+        average_employment_df = (
+            df.groupby(["기관명", "직종"])
+            .agg(
+                평균취업률=("6개월후_취업률", "mean"),  # 평균 취업률
+                평균수료인원=("수료인원", "mean"),
+                과정진행횟수=("회차", "count"),  # 회차 수 계산
+            )
+            .reset_index()
         )
-        .reset_index()
-    )
-    average_employment_df["평균취업률"] = average_employment_df["평균취업률"].round(2)
-    average_employment_df["평균수료인원"] = average_employment_df["평균수료인원"].round(
-        2
-    )
-    average_employment_df = average_employment_df.sort_values(
-        by="평균취업률", ascending=False
-    )
-    average_df = average_employment_df.copy()
-    average_employment_df.set_index("기관명", inplace=True)
-    st.dataframe(average_employment_df, width=1000)
+        average_employment_df["평균취업률"] = average_employment_df["평균취업률"].round(
+            2
+        )
+        average_employment_df["평균수료인원"] = average_employment_df[
+            "평균수료인원"
+        ].round(2)
+        average_employment_df = average_employment_df.sort_values(
+            by="평균취업률", ascending=False
+        )
+        average_df = average_employment_df.copy()
+        average_employment_df.set_index("기관명", inplace=True)
+        st.dataframe(average_employment_df)
+
+    with company_average_people:
+        df = df[df.모집인원 <= 30][df.과정상황 != "미실시"]
+        df["모집율"] = df.수강확정인원 / df.모집인원 * 100
+        average_people_df = (
+            df.groupby("기관명").agg(
+                평균모집율=("모집율", "mean"),
+                총모집인원=("모집인원", "sum"),
+                총확정인원=("수강확정인원", "sum"),
+            )
+        ).sort_values(by="평균모집율", ascending=False)
+        average_people_df.평균모집율 = average_people_df.평균모집율.round(2)
+        st.dataframe(average_people_df)
+
     return average_df
 
 
@@ -258,7 +276,7 @@ if st.session_state.key == True:
         df["기관명"] = df["기관명"].str.replace(r"^\(.\)", "", regex=True)
         df["강사명"] = df.apply(find_teacher, axis=1)
         df.insert(3, "강사명", df.pop("강사명"))
-
+        df = df.sort_values(by="기관명")
     else:
         df = None
 

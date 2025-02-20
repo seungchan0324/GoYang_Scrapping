@@ -1,5 +1,3 @@
-import requests
-import json
 import collections
 import csv
 import re
