@@ -137,12 +137,16 @@ def create_average_dataframe(df: pd.DataFrame):
         df = df[df.모집인원 <= 30][df.과정상황 != "미실시"]
         df["모집율"] = df.수강확정인원 / df.모집인원 * 100
         average_people_df = (
-            df.groupby("기관명").agg(
-                평균모집율=("모집율", "mean"),
-                총모집인원=("모집인원", "sum"),
-                총확정인원=("수강확정인원", "sum"),
+            (
+                df.groupby("기관명").agg(
+                    평균모집율=("모집율", "mean"),
+                    총모집인원=("모집인원", "sum"),
+                    총확정인원=("수강확정인원", "sum"),
+                )
             )
-        ).sort_values(by="평균모집율", ascending=False)
+            .sort_values(by="평균모집율", ascending=False)
+            .reset_index()
+        )
         average_people_df.평균모집율 = average_people_df.평균모집율.round(2)
         st.dataframe(average_people_df)
 
