@@ -53,6 +53,7 @@ if "input_key" not in st.session_state:
     st.session_state.input_key = None
 st.session_state.selected_file = None
 
+api_key = st.secrets["API_KEY"]
 
 # 클래스 초기화
 main = Main()
@@ -135,6 +136,7 @@ training_container = st.container()
 training_checkbox_container = st.container()
 search_container = st.container()
 
+st.write(api_key)
 
 if st.session_state.key == True:
 

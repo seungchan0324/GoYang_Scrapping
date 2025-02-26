@@ -375,12 +375,12 @@ class Use_API:
 async def main():
     start_time = time.time()
     api = Use_API(
-        dt.datetime.strptime("2022-01-01", "%Y-%m-%d").date(),
-        dt.datetime.strptime("2025-02-18", "%Y-%m-%d").date(),
+        dt.datetime.strptime("2025-01-01", "%Y-%m-%d").date(),
+        dt.datetime.strptime("2025-02-24", "%Y-%m-%d").date(),
         ["11"],
         ["200101", "200102", "200103"],
         ["None"],
-        "자바파이썬빅데이터",
+        "솔데스크",
     )
     await api.start_data_collection_async(print)
     end_time = time.time()
