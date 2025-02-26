@@ -9,12 +9,13 @@ if "input_key" not in st.session_state:
     st.session_state.input_key = None
 st.session_state.selected_file = None
 st.set_page_config(page_title="SolTrack:Analyze", page_icon="📊", layout="wide")
+solkey = st.secrets["KEY"]
 
 st.title("분석 페이지")
 
 
 def key_change(key):
-    if key == "$sol25":
+    if key == solkey:
         st.session_state.key = True
         st.rerun()
 

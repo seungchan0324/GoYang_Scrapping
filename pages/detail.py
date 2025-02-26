@@ -30,6 +30,7 @@ if "key" not in st.session_state:
     st.session_state.key = False
 if "input_key" not in st.session_state:
     st.session_state.input_key = None
+solkey = st.secrets["KEY"]
 
 
 with open("./json/과정_강사.json", "r", encoding="UTF-8") as f:
@@ -245,7 +246,7 @@ def occupation_chart(df):
 
 
 def key_change(key):
-    if key == "$sol25":
+    if key == solkey:
         st.session_state.key = True
         st.rerun()
 
