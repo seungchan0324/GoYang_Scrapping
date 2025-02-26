@@ -16,8 +16,6 @@ class Use_API:
 
     file_name_selector = File_Name_Selector()
 
-    # apikey
-    authKey = "9aa1c3c5-e44f-4ccc-a119-e0af76286b28"
     # returnType 절대절대 고정
     returnType = "JSON"
     # 1은 리스트 2는 상세(고정) 솔직히 뭐가 다른건지 모르겠음.
@@ -46,6 +44,7 @@ class Use_API:
         srchNcsls,
         crseTracseSels,
         keyword,
+        api_key,
     ):
         # 훈련시작일 From, 훈련시작일 To
         self.srchTraStDt = str(srchTraStDt).replace("-", "")
@@ -69,6 +68,8 @@ class Use_API:
             self.keyword = keyword.replace("&", "")
         else:
             self.keyword = ""
+
+        self.authKey = api_key
 
     # 도구1 날짜 문자열을 date 객체로 변환
     def dt_formatter(self, str_date):

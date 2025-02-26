@@ -15,6 +15,7 @@ class Main:
         training_data,
         keyword,
         update_status,
+        api_key,
     ):
         api = Use_API(
             start_date,
@@ -23,6 +24,7 @@ class Main:
             ["200101", "200102", "200103"],
             training_data,
             keyword,
+            api_key,
         )
         start_time = time.time()
         await api.start_data_collection_async(update_status)

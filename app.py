@@ -54,6 +54,7 @@ if "input_key" not in st.session_state:
 st.session_state.selected_file = None
 
 api_key = st.secrets["API_KEY"]
+solkey = st.secrets["KEY"]
 
 # 클래스 초기화
 main = Main()
@@ -75,7 +76,9 @@ def search_state():
     st.session_state.search_started = not st.session_state.search_started
 
 
-def start_crawling(start_date, end_date, location_data, training_data, keyword):
+def start_crawling(
+    start_date, end_date, location_data, training_data, keyword, api_key
+):
     start_date_picker = start_date
     end_date_picker = end_date
     file_name = file_name_selector.select(
@@ -85,7 +88,13 @@ def start_crawling(start_date, end_date, location_data, training_data, keyword):
     file_name_display.info(f"{file_name}.csv")
     asyncio.run(
         main.start_crawling(
-            start_date, end_date, location_data, training_data, keyword, update_status
+            start_date,
+            end_date,
+            location_data,
+            training_data,
+            keyword,
+            update_status,
+            api_key,
         )
     )
     search_state()
@@ -119,7 +128,7 @@ def button_toggle(str):
 
 
 def key_change(key):
-    if key == "$sol25":
+    if key == solkey:
         st.session_state.key = True
         st.rerun()
         return ""
@@ -135,8 +144,6 @@ date_container = st.container()
 training_container = st.container()
 training_checkbox_container = st.container()
 search_container = st.container()
-
-st.write(api_key)
 
 if st.session_state.key == True:
 
@@ -284,7 +291,9 @@ if st.session_state.key == True:
         end_date = st.session_state.param["end_date"]
         location_data = st.session_state.param["location_data"]
         training_data = st.session_state.param["training_data"]
-        start_crawling(start_date, end_date, location_data, training_data, keyword)
+        start_crawling(
+            start_date, end_date, location_data, training_data, keyword, api_key
+        )
 else:
     with st.sidebar:
         key = st.text_input(
